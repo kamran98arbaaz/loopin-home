@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+{% block title %}Updates – {{ app_name }}{% endblock %}
+
+{% block content %}
+  <h2>All Updates</h2>
+  <ul class="updates-list">
+    {% for update in updates %}
+      <li class="update-item">
+        <div class="update-header">
+          <span class="author-info">
+            <strong class="author">{{ update.name }}</strong>
+            (<span class="timestamp">{{ update.timestamp }}</span>)
+          </span>
+
+          {% if current_user == update.name %}
+            <div class="actions">
+              <a href="{{ url_for('edit_update', update_id=update.id) }}"
+                 class="button small edit-btn">
+                Edit
+              </a>
+              <form action="{{ url_for('delete_update', update_id=update.id) }}"
+                    method="POST"
+                    class="inline-form">
+                <button type="submit" class="button small delete-btn">
+                  Delete
+                </button>
+              </form>
+            </div>
+          {% endif %}
+        </div>
+        <p class="message">{{ update.message }}</p>
+      </li>
+    {% else %}
+      <li class="update-item">No updates yet. Be the first to post!</li>
+    {% endfor %}
+  </ul>
+{% endblock %}

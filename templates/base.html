@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>{% block title %}{{ app_name }}{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=1.0"/>
+  {% block head %}{% endblock %}
+</head>
+<body>
+  <header>
+    <h1 class="site-logo">
+      <a href="{{ url_for('home') }}">LoopIn</a>
+    </h1>
+    <hr>
+  </header>
+
+  <div class="container">
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <ul class="flashes" id="flash-container">
+          {% for msg in messages %}
+            <li>{{ msg }}</li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+  </div>
+
+  <script>
+    window.addEventListener('DOMContentLoaded', () => {
+      setTimeout(() => {
+        const flashBox = document.getElementById('flash-container');
+        if (!flashBox) return;
+        flashBox.style.transition = 'opacity 0.5s ease-out';
+        flashBox.style.opacity = '0';
+        setTimeout(() => flashBox.remove(), 500);
+      }, 2000);
+    });
+  </script>
+</body>
+</html>

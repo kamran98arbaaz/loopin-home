@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% block title %}Post Update – {{ app_name }}{% endblock %}
+
+{% block content %}
+
+  <h2>Post a New Update</h2>
+
+  <form method="POST" action="{{ url_for('post_update') }}" class="post-form">
+
+    <label for="name">Your Name:</label>
+    <select name="name" id="name" required>
+      <option value="" disabled selected>Select</option>
+      {% for user in authorized_users %}
+        <option
+          value="{{ user }}"
+          {% if request.form.get('name') == user %}selected{% endif %}
+        >{{ user }}</option>
+      {% endfor %}
+    </select>
+
+    <label for="message">Message:</label>
+    <textarea
+      name="message"
+      id="message"
+      rows="4"
+      required
+    >{{ request.form.get('message', '') }}</textarea>
+
+    <button type="submit" class="button">Post Update</button>
+  </form>
+
+{% endblock %}
+

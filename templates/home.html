@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+{% block title %}Home – {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="tiles">
+  <a href="{{ url_for('show_updates') }}" class="tile">
+    <h2>Show Updates</h2>
+    <p>Browse all team updates in one place.</p>
+  </a>
+  <a href="{{ url_for('post_update') }}" class="tile">
+    <h2>Post a New Update</h2>
+    <p>Share your latest status with the team.</p>
+  </a>
+</div>
+{% endblock %}
