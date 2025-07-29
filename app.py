@@ -9,10 +9,6 @@ from flask import Flask, render_template, request, redirect, url_for, flash, ses
 
 app = Flask(__name__)
 
-@app.route("/")
-def hello():
-    return "Hello, Railway!"
-
 app.secret_key = 'replace-this-with-a-secure-random-string'
 app.config['APP_NAME'] = 'LoopIn'
 
