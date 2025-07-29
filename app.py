@@ -8,6 +8,11 @@ from datetime import datetime
 from flask import Flask, render_template, request, redirect, url_for, flash, session
 
 app = Flask(__name__)
+
+@app.route("/")
+def hello():
+    return "Hello, Railway!"
+
 app.secret_key = 'replace-this-with-a-secure-random-string'
 app.config['APP_NAME'] = 'LoopIn'
 
@@ -136,5 +141,6 @@ def delete_update(update_id):
     return redirect(url_for('show_updates'))
 
 
-if __name__ == '__main__':
-    app.run(debug=True)
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=8000)
+
