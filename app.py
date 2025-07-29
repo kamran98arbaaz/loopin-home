@@ -5,7 +5,8 @@ import pytz
 IST = pytz.timezone('Asia/Kolkata')
 
 from datetime import datetime
-from flask import Flask, render_template, request, redirect, url_for, flash, session
+from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
+from github_handler import load_updates, save_updates
 
 app = Flask(__name__)
 
@@ -57,6 +58,13 @@ def show_updates():
 @app.route('/post', methods=['GET', 'POST'])
 def post_update():
     if request.method == 'POST':
+        if request.is_json:
+            updates = load_updates()
+            new_update = request.json
+            updates.append(new_update)
+            success = save_updates(updates)
+            return jsonify({"success": success}), 200 if success else 500
+            
         name = request.form['name']
         message = request.form['message'].strip()
 
