@@ -1,0 +1,17 @@
+# Python bytecode and cache
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Virtual environments
+.venv/
+env/
+venv/
+
+# dotenv - secrets
+.env
+
+# Editor/IDE settings
+.vscode/
+.idea/
+*.swp
