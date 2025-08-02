@@ -4,14 +4,48 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>{% block title %}{{ app_name }}{% endblock %}</title>
+
+  <!-- Main stylesheet -->
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=1.0"/>
+
+  <!-- Font Awesome for icons -->
+  <link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"
+    integrity="sha512-dNmO9G2NLW7+XWfym1NYuMjxs6JNwAMeUQsFP2eh+xz5sK8YMU6m5XbFpdRjG+3fX1/8FpPhT6v9YkHo0U8gQ=="
+    crossorigin="anonymous"
+    referrerpolicy="no-referrer"
+  />
+
   {% block head %}{% endblock %}
 </head>
 <body>
   <header>
-    <h1 class="site-logo">
-      <a href="{{ url_for('home') }}">LoopIn</a>
-    </h1>
+    <nav class="navbar">
+      <div class="navbar-left">
+        {% if current_user %}
+          <span class="welcome">Hello, {{ current_user.display_name }}</span>
+          <a href="{{ url_for('logout') }}" class="button logout-btn">
+            <i class="fas fa-sign-out-alt"></i> Logout
+          </a>
+        {% else %}
+          <a href="{{ url_for('login') }}" class="button login-btn">
+            <i class="fas fa-user-circle"></i> Login
+          </a>
+          <a href="{{ url_for('register') }}" class="button register-btn">
+            Register
+          </a>
+        {% endif %}
+      </div>
+
+      <div class="navbar-center">
+        <h1 class="site-logo">
+          <a href="{{ url_for('home') }}">LoopIn</a>
+        </h1>
+      </div>
+
+      <div class="navbar-right"></div> <!-- Empty column for layout balance -->
+    </nav>
     <hr>
   </header>
 

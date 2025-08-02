@@ -9,10 +9,11 @@
         <div class="update-header">
           <span class="author-info">
             <strong class="author">{{ update.name }}</strong>
+            <span class="process"> — Process: <em>{{ update.process }}</em></span>
             (<span class="timestamp">{{ update.timestamp }}</span>)
           </span>
 
-          {% if current_user == update.name %}
+          {% if current_user and update.name and current_user.display_name and current_user.display_name|lower == update.name|lower %}
             <div class="actions">
               <a href="{{ url_for('edit_update', update_id=update.id) }}"
                  class="button small edit-btn">

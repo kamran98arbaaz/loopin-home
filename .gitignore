@@ -15,3 +15,7 @@ venv/
 .vscode/
 .idea/
 *.swp
+
+.flaskenv
+flaskenv
+.env

@@ -7,14 +7,14 @@
 
   <form method="POST" action="{{ url_for('post_update') }}" class="post-form">
 
-    <label for="name">Your Name:</label>
-    <select name="name" id="name" required>
-      <option value="" disabled selected>Select</option>
-      {% for user in authorized_users %}
+    <label for="process">Process:</label>
+    <select name="process" id="process" required>
+      <option value="" disabled selected>Select a process</option>
+      {% for process in processes %}
         <option
-          value="{{ user }}"
-          {% if request.form.get('name') == user %}selected{% endif %}
-        >{{ user }}</option>
+          value="{{ process }}"
+          {% if request.form.get('process') == process %}selected{% endif %}
+        >{{ process }}</option>
       {% endfor %}
     </select>
 
@@ -30,4 +30,3 @@
   </form>
 
 {% endblock %}
-
