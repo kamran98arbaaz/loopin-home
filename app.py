@@ -27,10 +27,11 @@ from flask_migrate import Migrate
 load_dotenv()
 IST = pytz.timezone("Asia/Kolkata")
 db = SQLAlchemy()
-migrate = Migrate()
+migrate = Migrate() 
+
 
 def create_app():
-    app = Flask(__name__)
+    app = Flask(__name__)    
     migrate.init_app(app, db)
     app.secret_key = os.getenv("FLASK_SECRET_KEY", "replace-this-with-a-secure-random-string")
     app.config["APP_NAME"] = "LoopIn"
