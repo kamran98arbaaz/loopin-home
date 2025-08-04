@@ -5,26 +5,23 @@
   <h2>All Updates</h2>
   <ul class="updates-list">
     {% for update in updates %}
-      <li class="update-item">
+      <li class="update-item {% if update.is_new %}new-update{% endif %}" data-update-id="{{ update.id }}">
         <div class="update-header">
           <span class="author-info">
+            {% if update.is_new %}
+              <span class="new-dot">•</span>
+            {% endif %}
             <strong class="author">{{ update.name }}</strong>
-            <span class="process"> — Process: <em>{{ update.process }}</em></span>
+            <span class="process"> — Process: <strong>{{ update.process }}</strong></span>
             (<span class="timestamp">{{ update.timestamp }}</span>)
           </span>
+          <span class="read-count">📖 {{ update.read_count }} reads</span>
 
           {% if current_user and update.name and current_user.display_name and current_user.display_name|lower == update.name|lower %}
             <div class="actions">
-              <a href="{{ url_for('edit_update', update_id=update.id) }}"
-                 class="button small edit-btn">
-                Edit
-              </a>
-              <form action="{{ url_for('delete_update', update_id=update.id) }}"
-                    method="POST"
-                    class="inline-form">
-                <button type="submit" class="button small delete-btn">
-                  Delete
-                </button>
+              <a href="{{ url_for('edit_update', update_id=update.id) }}" class="button small edit-btn">Edit</a>
+              <form action="{{ url_for('delete_update', update_id=update.id) }}" method="POST" class="inline-form">
+                <button type="submit" class="button small delete-btn">Delete</button>
               </form>
             </div>
           {% endif %}

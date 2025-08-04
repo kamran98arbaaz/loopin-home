@@ -778,3 +778,378 @@ form button:active {
   font-weight: 500;
   margin-right: 8px;
 }
+
+.modal-overlay {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(0,0,0,0.4); display: flex;
+  align-items: center; justify-content: center;
+}
+.modal-content {
+  background: #fff; padding: 1.5rem; border-radius: 8px;
+  width: 300px; text-align: center;
+}
+.modal-actions { margin-top: 1rem; }
+.hidden { display: none; }
+
+/* Hide by default */
+.hidden {
+  display: none;
+}
+
+/* Full-screen semi-transparent overlay */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+
+  /* center the modal content */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* The white “window” in the middle */
+.modal-content {
+  background: #fff;
+  padding: 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+  max-width: 90%;
+  width: 320px;
+  text-align: center;
+}
+
+/* Input styling */
+#guestNameInput {
+  width: 100%;
+  padding: 0.5rem;
+  margin: 0.75rem 0;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+/* Buttons inside the modal */
+.modal-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.modal-actions .button {
+  flex: 1;
+  padding: 0.5rem;
+  cursor: pointer;
+}
+
+.hidden { display: none; }
+
+.modal-overlay {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(0,0,0,0.5); z-index: 1000;
+  display: flex; align-items: center; justify-content: center;
+}
+
+.modal-content {
+  background: #fff; padding: 1.5rem; border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.3); width: 320px; text-align: center;
+}
+
+#guestNameInput {
+  width: 100%; padding: 0.5rem; margin: 0.75rem 0;
+  border: 1px solid #ccc; border-radius: 4px;
+}
+
+.modal-actions { display: flex; gap: 0.5rem; }
+.modal-actions .button { flex: 1; padding: 0.5rem; cursor: pointer; }
+
+/* Base hidden state */
+.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Modal overlay */
+.modal-overlay {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: rgba(0,0,0,0.5);
+  z-index: 1000;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  opacity: 1;
+  pointer-events: auto;
+
+  transition: opacity 0.25s ease-in-out;
+}
+
+/* Modal box */
+.modal-content {
+  background: #fff;
+  padding: 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+  width: 320px;
+  text-align: center;
+  transform: scale(1);
+  transition: transform 0.25s ease-in-out;
+}
+
+/* Input field */
+#guestNameInput {
+  width: 100%;
+  padding: 0.5rem;
+  margin: 0.75rem 0;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+/* Modal buttons */
+.modal-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+.modal-actions .button {
+  flex: 1;
+  padding: 0.5rem;
+  cursor: pointer;
+}
+
+/* Fade & shrink when hidden */
+.hidden.modal-overlay {
+  opacity: 0;
+  pointer-events: none;  /* ✅ This makes page clickable again */
+}
+.hidden.modal-overlay .modal-content {
+  transform: scale(0.95);
+}
+
+.update-item.new-update {
+  background: linear-gradient(135deg, rgba(255, 250, 230, 0.9) 0%, rgba(255, 240, 200, 0.9) 100%);
+  border-left: 4px solid #FFD54F;
+  padding-left: 0.75rem;
+  transition: background 0.3s ease;
+}
+
+.new-dot {
+  color: #000000;
+  margin-right: 4px;
+  font-size: 1.2em;
+  vertical-align: middle;
+}
+/* Global light background */
+body {
+  background: #edf2fb; /* very light cool gray-blue */
+  color: #1f2d3a; /* dark enough for contrast */
+  font-family: system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  margin: 0;
+  padding: 0;
+}
+
+/* Container to give content breathing room */
+.container {
+  max-width: 980px;
+  margin: 1rem auto;
+  padding: 0.75rem 1rem;
+}
+
+/* Header/navbar with blended background */
+header {
+  background: #edf2fb; /* slightly deeper than body for separation */
+}
+
+/* Navbar tweaks */
+.navbar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+.site-logo a {
+  text-decoration: none;
+  color: #1f2d3a;
+  font-weight: 700;
+  font-size: 3.0rem;
+  letter-spacing: -0.5px;
+  margin: 0;
+}
+
+/* Title blending and subtle emphasis */
+h1, h2 {
+  color: #1f2d3a;
+  margin-top: 0;
+}
+
+h2 {
+  font-size: 1.75rem;
+  margin-bottom: 0.75rem;
+}
+
+/* Cards / update items contrast */
+.update-item {
+  background: #ffffff;
+  border: 1px solid rgba(31,45,58,0.08);
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  transition: box-shadow .2s ease, transform .15s ease;
+}
+
+.update-item:hover {
+  box-shadow: 0 8px 20px rgba(31,45,58,0.08);
+  transform: translateY(-1px);
+}
+
+/* Buttons */
+.button {
+  background: #3f8efc;
+  border: none;
+  color: white;
+  padding: 0.3rem 0.9rem;
+  border-radius: 6px;
+  cursor: pointer;
+  text-decoration: none;
+  font-size: 0.9rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 600;
+}
+
+.button.small {
+  padding: 0.3rem 0.6rem;
+  font-size: 0.75rem;
+}
+
+/* Muted secondary text */
+.process, .timestamp {
+  color: #61738d;
+  font-size: 0.9rem;
+}
+
+/* Navbar buttons */
+.navbar .button {
+  background: #ffffff;
+  color: #3f8efc;
+  border: 1px solid #3f8efc;
+}
+
+.navbar .button.logout-btn {
+  background: transparent;
+  color: #1f2d3a;
+  border: 1px solid rgba(31,45,58,0.2);
+}
+
+/* Welcome text */
+.welcome {
+  margin-right: 0.75rem;
+  font-weight: 500;
+}
+
+/* Navbar layout: left, center, right on one line */
+.navbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: nowrap;
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 0.5rem 1rem;
+}
+
+/* Left / center / right sections */
+.navbar-left,
+.navbar-center,
+.navbar-right {
+  display: flex;
+  align-items: center;
+}
+
+/* Center logo stays centered; allow it some flex */
+.navbar-center {
+  flex: 1;
+  justify-content: center;
+}
+
+/* Left and right shrink to content */
+.navbar-left {
+  flex: 0 0 auto;
+}
+.navbar-right {
+  flex: 0 0 auto;
+  gap: 0.5rem;
+}
+
+/* Remove default hr if any still present */
+header hr {
+  display: none;
+}
+
+/* Tighter spacing for login/register in header */
+.navbar .button {
+  font-size: 0.85rem;
+  padding: 0.4rem 0.8rem;
+}
+
+/* Welcome text flush left */
+.welcome {
+  font-weight: 500;
+  margin-right: 1rem;
+}
+
+.header-top {
+  padding: 0.25rem 1rem;
+}
+
+.secondary-nav .button {
+  margin: 0;
+  padding: 0.4rem 0.7rem;
+  font-size: 0.80rem;
+}
+
+/* Optional: remove borders if any */
+.navbar {
+  border: none;
+  background: transparent;
+}
+
+.site-logo a {
+  color: #1f2d3a;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+/* Reduce spacing inside navbar items */
+.navbar-left,
+.navbar-right {
+  gap: 0.5rem;
+}
+
+.site-logo {
+  margin: 0;
+  display: flex;
+  align-items: center;
+}
+
+.logo-img {
+  height: 100px; /* adjust to desired header logo height */
+  width: auto;
+  display: block;
+  object-fit: contain;
+}
+
+.process strong {
+  color: #212529;
+}

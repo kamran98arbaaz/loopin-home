@@ -1,42 +1,45 @@
-# app.py
 import os
 import uuid
 import pytz
-import re  # ✅ Added for username validation
-from datetime import datetime
+import re
+from datetime import datetime, timedelta
 from urllib.parse import urlparse
 
 from dotenv import load_dotenv
-from flask import (
-    Flask,
-    render_template,
-    request,
-    redirect,
-    url_for,
-    flash,
-    session,
-    jsonify,
-)
+from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import text
+from sqlalchemy import text, func
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
 from flask_migrate import Migrate
+from read_logs import bp as read_logs_bp
+from flask_login import LoginManager
+from models import User, Update, ReadLog
+from extensions import db
 
-# Load .env if present
+# Load .env
 load_dotenv()
+migrate = Migrate()
+login_manager = LoginManager()
+login_manager.login_view = 'login'
+
 IST = pytz.timezone("Asia/Kolkata")
-db = SQLAlchemy()
-migrate = Migrate() 
 
-
-def create_app():
-    app = Flask(__name__)    
+def create_app(config_name=None):
+    app = Flask(__name__)
     migrate.init_app(app, db)
+    login_manager.init_app(app)
+
+    app.register_blueprint(read_logs_bp)
+
+    @login_manager.user_loader
+    def load_user(user_id):
+        return User.query.get(int(user_id))
+
     app.secret_key = os.getenv("FLASK_SECRET_KEY", "replace-this-with-a-secure-random-string")
     app.config["APP_NAME"] = "LoopIn"
 
-    # Database Config
+    # Database config
     DATABASE_URL = os.getenv("DATABASE_URL")
     if not DATABASE_URL:
         raise RuntimeError("DATABASE_URL not set in environment.")
@@ -55,44 +58,7 @@ def create_app():
     with app.app_context():
         db.create_all()
 
-    #
-    # Models
-    #
-    class Update(db.Model):
-        __tablename__ = "updates"
-        id = db.Column(db.String(32), primary_key=True)
-        name = db.Column(db.String(100), nullable=False)
-        message = db.Column(db.Text, nullable=False)
-        process = db.Column(db.String(32), nullable=False)
-        timestamp = db.Column(db.DateTime, nullable=False)
-
-        def to_dict(self):
-            utc_ts = self.timestamp.replace(tzinfo=pytz.UTC)
-            ist_ts = utc_ts.astimezone(IST)
-            return {
-                "id": self.id,
-                "name": self.name,
-                "process": self.process,
-                "message": self.message,
-                "timestamp": ist_ts.strftime("%d/%m/%Y, %H:%M:%S"),
-            }
-
-    class User(db.Model):
-        __tablename__ = "users"
-        id = db.Column(db.Integer, primary_key=True)
-        username = db.Column(db.String(50), unique=True, nullable=False)
-        display_name = db.Column(db.String(80), nullable=False)
-        password_hash = db.Column(db.String(128), nullable=False)
-
-        def set_password(self, raw_password):
-            self.password_hash = generate_password_hash(raw_password)
-
-        def check_password(self, raw_password):
-            return check_password_hash(self.password_hash, raw_password)
-
-    #
     # Auth Helpers
-    #
     def login_required(f):
         @wraps(f)
         def decorated(*args, **kwargs):
@@ -109,9 +75,7 @@ def create_app():
             user = User.query.get(session["user_id"])
         return dict(current_user=user)
 
-    #
-    # Routes
-    #
+    # Routes    
     @app.route("/health")
     def health():
         try:
@@ -126,12 +90,30 @@ def create_app():
 
     @app.route("/updates")
     def show_updates():
-        updates = Update.query.order_by(Update.timestamp.desc()).all()
-        return render_template(
-            "show.html",
-            app_name=app.config["APP_NAME"],
-            updates=[u.to_dict() for u in updates],
+        rows = (
+            db.session.query(Update, func.count(ReadLog.id).label('read_count'))
+            .outerjoin(ReadLog, ReadLog.update_id == Update.id)
+            .group_by(Update.id)
+            .order_by(Update.timestamp.desc())
+            .all()
         )
+
+        updates = []
+        now_utc = datetime.utcnow().replace(tzinfo=pytz.UTC)
+        for upd, count in rows:
+            d = upd.to_dict()
+            d['read_count'] = count
+            
+            # determine if it's within last 24 hours
+            if upd.timestamp.tzinfo is None:
+                ts_utc = upd.timestamp.replace(tzinfo=pytz.UTC)
+            else:
+                ts_utc = upd.timestamp.astimezone(pytz.UTC)
+            d['is_new'] = (now_utc - ts_utc) <= timedelta(hours=24)    
+                
+            updates.append(d)
+
+        return render_template("show.html", app_name=app.config["APP_NAME"], updates=updates)
 
     @app.route("/post", methods=["GET", "POST"])
     @login_required
@@ -220,7 +202,6 @@ def create_app():
             username = request.form["username"].strip().replace(" ", "_").lower()
             password = request.form["password"]
 
-            # ✅ Validate characters in username
             if not re.match("^[A-Za-z0-9_]+$", username):
                 flash("🚫 Username can only contain letters, numbers, and underscores.")
                 return redirect(url_for("register"))
@@ -264,6 +245,8 @@ def create_app():
         return redirect(url_for("home"))
 
     return app
+
+
 
 if __name__ == "__main__":
     app = create_app()
