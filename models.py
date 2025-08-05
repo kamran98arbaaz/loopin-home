@@ -7,6 +7,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 
 IST = pytz.timezone("Asia/Kolkata")
 
+
 class Update(db.Model):
     __tablename__ = "updates"
     id = db.Column(db.String(32), primary_key=True)
@@ -14,6 +15,13 @@ class Update(db.Model):
     message = db.Column(db.Text, nullable=False)
     process = db.Column(db.String(32), nullable=False)
     timestamp = db.Column(db.DateTime, nullable=False)
+
+    read_logs = db.relationship(
+        'ReadLog',
+        backref='update',
+        cascade="all, delete-orphan",
+        passive_deletes=True
+    )
 
     def to_dict(self):
         utc_ts = self.timestamp.replace(tzinfo=pytz.UTC)
@@ -37,6 +45,12 @@ class User(db.Model, UserMixin):
     password_hash = db.Column(db.Text, nullable=False)
     role = db.Column(db.String(20), nullable=False, default='user')
 
+    read_logs = db.relationship(
+        'ReadLog',
+        backref='user',
+        cascade="all, delete-orphan"
+    )
+
     def set_password(self, raw_password):
         self.password_hash = generate_password_hash(raw_password)
 
@@ -48,13 +62,10 @@ class ReadLog(db.Model):
     __tablename__ = 'read_logs'
 
     id = db.Column(db.Integer, primary_key=True)
-    update_id = db.Column(db.String(32), db.ForeignKey('updates.id'), nullable=False)
+    update_id = db.Column(db.String(32), db.ForeignKey('updates.id', ondelete='CASCADE'), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     guest_name = db.Column(db.String(100), nullable=True)
     timestamp = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-
-    update = db.relationship('Update', backref='read_logs')
-    user = db.relationship('User', backref='read_logs')
 
     def reader_display(self):
         return self.user.display_name if self.user_id else self.guest_name

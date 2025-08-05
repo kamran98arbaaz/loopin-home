@@ -180,21 +180,32 @@ def create_app(config_name=None):
     @app.route("/delete/<update_id>", methods=["POST"])
     @login_required
     def delete_update(update_id):
+        print("🔥 DELETE requested for ID:", update_id)
+        
         update = Update.query.get(update_id)
+        print("🔍 Found update object:", update)
+        
         current = inject_current_user()["current_user"]
-        if not update or update.name != current.display_name:
-            flash("🚫 Unauthorized or not found.")
+        if not update:
+            flash("⚠️ Update not found.")
             return redirect(url_for("show_updates"))
-
+        
+        if update.name.strip().lower() != current.display_name.strip().lower():
+            flash("🚫 Not authorized to delete.")
+            return redirect(url_for("show_updates"))
+        
         try:
             db.session.delete(update)
             db.session.commit()
-            flash("🗑️ Update deleted.")
-        except Exception:
+            flash("✅ Update deleted.")
+        except Exception as e:
             db.session.rollback()
-            flash("⚠️ Failed to delete update.")
-        return redirect(url_for("show_updates"))
-
+            flash("❌ Deletion failed.")
+            print("🧨 DB Error:", e)
+            
+        return redirect(url_for("show_updates"))    
+            
+                
     @app.route("/register", methods=["GET", "POST"])
     def register():
         if request.method == "POST":
@@ -243,10 +254,17 @@ def create_app(config_name=None):
         session.pop("user_id", None)
         flash("👋 You’ve been logged out.")
         return redirect(url_for("home"))
+    
+        # [ ... API route for notifications ... ]
 
+    @app.route('/api/latest-update-time')
+    def latest_update_time():
+        latest = Update.query.order_by(Update.timestamp.desc()).first()
+        if latest:
+            return jsonify({'latest_timestamp': latest.timestamp.isoformat()})
+        return jsonify({'latest_timestamp': None})
+        
     return app
-
-
 
 if __name__ == "__main__":
     app = create_app()
