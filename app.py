@@ -1,4 +1,4 @@
-import os
+import os 
 import uuid
 import pytz
 import re
@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from urllib.parse import urlparse
 
 from dotenv import load_dotenv
-from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
+from flask import Flask, current_app, render_template, request, redirect, url_for, flash, session, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import text, func
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -14,7 +14,7 @@ from functools import wraps
 from flask_migrate import Migrate
 from read_logs import bp as read_logs_bp
 from flask_login import LoginManager
-from models import User, Update, ReadLog
+from models import User, Update, ReadLog, SOPSummary, LessonLearned
 from extensions import db
 
 # Load .env
@@ -29,8 +29,14 @@ def create_app(config_name=None):
     app = Flask(__name__)
     migrate.init_app(app, db)
     login_manager.init_app(app)
-
     app.register_blueprint(read_logs_bp)
+    # Register new API blueprint (first milestone)
+    try:
+        from api.updates import bp as api_bp
+        app.register_blueprint(api_bp)
+    except Exception:
+        # Blueprint registration should not break app startup if something is off
+        pass
 
     @login_manager.user_loader
     def load_user(user_id):
@@ -44,19 +50,24 @@ def create_app(config_name=None):
     if not DATABASE_URL:
         raise RuntimeError("DATABASE_URL not set in environment.")
     parsed = urlparse(DATABASE_URL)
-    if parsed.scheme not in ("postgresql", "postgres"):
+    # Support Postgres in production and sqlite for local testing
+    if parsed.scheme in ("postgresql", "postgres", "sqlite", "sqlite3"):
+        app.config["SQLALCHEMY_DATABASE_URI"] = DATABASE_URL
+    else:
         raise RuntimeError(f"Unsupported DB scheme: {parsed.scheme}")
-    app.config["SQLALCHEMY_DATABASE_URI"] = DATABASE_URL
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
     sslmode = os.getenv("PG_SSLMODE")
-    if sslmode:
+    if sslmode and parsed.scheme in ("postgresql", "postgres"):
         app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {"connect_args": {"sslmode": sslmode}}
 
     db.init_app(app)
 
     with app.app_context():
-        db.create_all()
+        # Avoid running create_all for sqlite during tests because some
+        # Postgres-specific column types (e.g. ARRAY) are not supported by sqlite
+        if parsed.scheme not in ("sqlite", "sqlite3"):
+            db.create_all()
 
     # Auth Helpers
     def login_required(f):
@@ -84,9 +95,73 @@ def create_app(config_name=None):
         except Exception as e:
             return jsonify({"status": "error", "db": str(e)}), 500
 
+    @app.route("/lessons_learned/view/<int:lesson_id>")
+    @login_required
+    def view_lesson_learned(lesson_id):
+        lesson = LessonLearned.query.get(lesson_id)
+        if not lesson:
+            flash("Lesson Learned not found.")
+            return redirect(url_for("list_lessons_learned"))
+        return render_template("view_lesson_learned.html", lesson=lesson)
+
+    @app.route("/search")
+    def search():
+        query = request.args.get("q", "").strip()
+        results = {"updates": [], "sops": [], "lessons": []}
+
+        if query:
+            # Case-insensitive search
+            query_filter = f"%{query}%"
+
+            # Updates
+            updates_rows = (
+                Update.query.filter(Update.message.ilike(query_filter))
+                .order_by(Update.timestamp.desc())
+                .all()
+            )
+            for upd in updates_rows:
+                results["updates"].append({
+                    "id": upd.id,
+                    "title": upd.message[:50] + ("..." if len(upd.message) > 50 else ""),
+                    "timestamp": upd.timestamp,
+                    "url": url_for("show_updates") + f"#update-{upd.id}"
+                })
+
+            # SOP Summaries
+            sops_rows = (
+                SOPSummary.query.filter(
+                    (SOPSummary.title.ilike(query_filter)) |
+                    (SOPSummary.summary_text.ilike(query_filter))
+                ).order_by(SOPSummary.created_at.desc()).all()
+            )
+            for sop in sops_rows:
+                results["sops"].append({
+                    "id": sop.id,
+                    "title": sop.title,
+                    "url": url_for("view_sop_summary", summary_id=sop.id)
+                })
+
+            # Lessons Learned
+            lessons_rows = (
+                LessonLearned.query.filter(
+                    (LessonLearned.title.ilike(query_filter)) |
+                    (LessonLearned.content.ilike(query_filter))
+                ).order_by(LessonLearned.created_at.desc()).all()
+            )
+            for lesson in lessons_rows:
+                results["lessons"].append({
+                    "id": lesson.id,
+                    "title": lesson.title,
+                    "url": url_for("view_lesson_learned", lesson_id=lesson.id)
+                })
+
+        return render_template("search_results.html", query=query, results=results)
+
     @app.route("/")
     def home():
-        return render_template("home.html", app_name=app.config["APP_NAME"])
+        summaries = SOPSummary.query.order_by(SOPSummary.created_at.desc()).all()
+        lessons = LessonLearned.query.order_by(LessonLearned.created_at.desc()).all()
+        return render_template("home.html", app_name=app.config["APP_NAME"], summaries=summaries, lessons=lessons)
 
     @app.route("/updates")
     def show_updates():
@@ -180,11 +255,7 @@ def create_app(config_name=None):
     @app.route("/delete/<update_id>", methods=["POST"])
     @login_required
     def delete_update(update_id):
-        print("🔥 DELETE requested for ID:", update_id)
-        
         update = Update.query.get(update_id)
-        print("🔍 Found update object:", update)
-        
         current = inject_current_user()["current_user"]
         if not update:
             flash("⚠️ Update not found.")
@@ -201,11 +272,10 @@ def create_app(config_name=None):
         except Exception as e:
             db.session.rollback()
             flash("❌ Deletion failed.")
-            print("🧨 DB Error:", e)
+            print("DB Error:", e)
             
         return redirect(url_for("show_updates"))    
             
-                
     @app.route("/register", methods=["GET", "POST"])
     def register():
         if request.method == "POST":
@@ -255,8 +325,200 @@ def create_app(config_name=None):
         flash("👋 You’ve been logged out.")
         return redirect(url_for("home"))
     
-        # [ ... API route for notifications ... ]
+    # New routes for SOP Summaries
+    @app.route("/sop_summaries")
+    @login_required
+    def list_sop_summaries():
+        sops = SOPSummary.query.order_by(SOPSummary.created_at.desc()).all()
+        return render_template("sop_summaries.html", sops=sops)
 
+    @app.route("/sop_summaries/add", methods=["GET", "POST"])
+    @login_required
+    def add_sop_summary():
+        if request.method == "POST":
+            title = request.form.get("title", "").strip()
+            summary_text = request.form.get("summary_text", "").strip()
+            department = request.form.get("department", "").strip()
+            tags = request.form.get("tags", "").strip()
+
+            if not title or not summary_text:
+                flash("Title and Summary are required.")
+                return redirect(url_for("add_sop_summary"))
+
+            tags_list = [tag.strip() for tag in tags.split(",")] if tags else []
+
+            sop = SOPSummary(
+                title=title,
+                summary_text=summary_text,
+                department=department or None,
+                tags=tags_list or None,
+            )
+            try:
+                db.session.add(sop)
+                db.session.commit()
+                flash("SOP Summary added successfully.")
+                return redirect(url_for("list_sop_summaries"))
+            except Exception as e:
+                db.session.rollback()
+                flash("Failed to add SOP Summary.")
+                print("DB Error:", e)
+                return redirect(url_for("add_sop_summary"))
+
+        return render_template("add_sop_summary.html")
+
+    @app.route("/sop_summaries/edit/<int:sop_id>", methods=["GET", "POST"])
+    @login_required
+    def edit_sop_summary(sop_id):
+        sop = SOPSummary.query.get(sop_id)
+        if not sop:
+            flash("SOP Summary not found.")
+            return redirect(url_for("list_sop_summaries"))
+
+        if request.method == "POST":
+            title = request.form.get("title", "").strip()
+            summary_text = request.form.get("summary_text", "").strip()
+            department = request.form.get("department", "").strip()
+            tags = request.form.get("tags", "").strip()
+
+            if not title or not summary_text:
+                flash("Title and Summary are required.")
+                return redirect(url_for("edit_sop_summary", sop_id=sop_id))
+
+            tags_list = [tag.strip() for tag in tags.split(",")] if tags else []
+
+            sop.title = title
+            sop.summary_text = summary_text
+            sop.department = department or None
+            sop.tags = tags_list or None
+            try:
+                db.session.commit()
+                flash("SOP Summary updated successfully.")
+            except Exception as e:
+                db.session.rollback()
+                flash("Failed to update SOP Summary.")
+                print("DB Error:", e)
+            return redirect(url_for("list_sop_summaries"))
+
+        return render_template("edit_sop_summary.html", sop=sop)
+
+    @app.route("/sop_summaries/delete/<int:sop_id>", methods=["POST"])
+    @login_required
+    def delete_sop_summary(sop_id):
+        sop = SOPSummary.query.get(sop_id)
+        if not sop:
+            flash("⚠️ SOP Summary not found.")
+            return redirect(url_for("list_sop_summaries"))
+        try:
+            db.session.delete(sop)
+            db.session.commit()
+            flash("✅ SOP Summary deleted.")
+        except Exception as e:
+            db.session.rollback()
+            flash("❌ Failed to delete SOP Summary.")
+            print("DB Error:", e)
+        return redirect(url_for("list_sop_summaries"))
+
+    # New routes for Lessons Learned
+    @app.route("/lessons_learned")
+    @login_required
+    def list_lessons_learned():
+        lessons = LessonLearned.query.order_by(LessonLearned.created_at.desc()).all()
+        return render_template("lessons_learned.html", lessons=lessons)
+
+    @app.route("/lessons_learned/add", methods=["GET", "POST"])
+    @login_required
+    def add_lesson_learned():
+        if request.method == "POST":
+            title = request.form.get("title", "").strip()
+            content = request.form.get("content", "").strip()
+            summary = request.form.get("summary", "").strip()
+            author = request.form.get("author", "").strip()
+            department = request.form.get("department", "").strip()
+            tags = request.form.get("tags", "").strip()
+
+            if not title or not content:
+                flash("Title and Content are required.")
+                return redirect(url_for("add_lesson_learned"))
+
+            tags_list = [tag.strip() for tag in tags.split(",")] if tags else []
+
+            lesson = LessonLearned(
+                title=title,
+                content=content,
+                summary=summary or None,
+                author=author or None,
+                department=department or None,
+                tags=tags_list or None,
+            )
+            try:
+                db.session.add(lesson)
+                db.session.commit()
+                flash("Lesson Learned added successfully.")
+                return redirect(url_for("list_lessons_learned"))
+            except Exception as e:
+                db.session.rollback()
+                flash("Failed to add Lesson Learned.")
+                print("DB Error:", e)
+                return redirect(url_for("add_lesson_learned"))
+
+        return render_template("add_lesson_learned.html")
+
+    @app.route("/lessons_learned/edit/<int:lesson_id>", methods=["GET", "POST"])
+    @login_required
+    def edit_lesson_learned(lesson_id):
+        lesson = LessonLearned.query.get(lesson_id)
+        if not lesson:
+            flash("Lesson Learned not found.")
+            return redirect(url_for("list_lessons_learned"))
+
+        if request.method == "POST":
+            title = request.form.get("title", "").strip()
+            content = request.form.get("content", "").strip()
+            summary = request.form.get("summary", "").strip()
+            author = request.form.get("author", "").strip()
+            department = request.form.get("department", "").strip()
+            tags = request.form.get("tags", "").strip()
+
+            if not title or not content:
+                flash("Title and Content are required.")
+                return redirect(url_for("edit_lesson_learned", lesson_id=lesson_id))
+
+            tags_list = [tag.strip() for tag in tags.split(",")] if tags else []
+
+            lesson.title = title
+            lesson.content = content
+            lesson.summary = summary or None
+            lesson.author = author or None
+            lesson.department = department or None
+            lesson.tags = tags_list or None
+
+            try:
+                db.session.commit()
+                flash("Lesson Learned updated successfully.")
+            except Exception as e:
+                db.session.rollback()
+                flash("Failed to update Lesson Learned.")
+                print("DB Error:", e)
+            return redirect(url_for("list_lessons_learned"))
+
+        return render_template("edit_lesson_learned.html", lesson=lesson)
+
+    @app.route("/lessons_learned/delete/<int:lesson_id>", methods=["POST"])
+    @login_required
+    def delete_lesson_learned(lesson_id):
+        lesson = LessonLearned.query.get(lesson_id)
+        if not lesson:
+            flash("Lesson Learned not found.")
+            return redirect(url_for("list_lessons_learned"))
+        try:
+            db.session.delete(lesson)
+            db.session.commit()
+            flash("Lesson Learned deleted successfully.")
+        except Exception as e:
+            db.session.rollback()
+            flash("Failed to delete Lesson Learned.")
+        return redirect(url_for("list_lessons_learned"))
+    
     @app.route('/api/latest-update-time')
     def latest_update_time():
         latest = Update.query.order_by(Update.timestamp.desc()).first()
@@ -264,6 +526,20 @@ def create_app(config_name=None):
             return jsonify({'latest_timestamp': latest.timestamp.isoformat()})
         return jsonify({'latest_timestamp': None})
         
+    @app.route("/sop_summaries/<int:summary_id>")
+    @login_required
+    def view_sop_summary(summary_id):
+        summary = SOPSummary.query.get(summary_id)
+        if not summary:
+            flash("\u26a0\ufe0f SOP Summary not found.")
+            return redirect(url_for("list_sop_summaries"))
+
+        return render_template(
+            "view_sop_summary.html",
+            summary=summary,
+            app_name=current_app.config["APP_NAME"]
+        )
+
     return app
 
 if __name__ == "__main__":
