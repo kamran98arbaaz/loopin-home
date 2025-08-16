@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block title %}Add SOP Summary - {{ app_name }}{% endblock %}
+
+{% block content %}
+<h2>Add New SOP Summary</h2>
+
+<form method="POST" action="{{ url_for('add_sop_summary') }}">
+  <label for="title">Title<span style="color:red">*</span>:</label><br/>
+  <input type="text" id="title" name="title" required maxlength="255" /><br/><br/>
+
+  <label for="summary_text">Summary Text<span style="color:red">*</span>:</label><br/>
+  <textarea id="summary_text" name="summary_text" rows="6" required></textarea><br/><br/>
+
+  <label for="department">Department:</label><br/>
+  <input type="text" id="department" name="department" maxlength="100" /><br/><br/>
+
+  <label for="tags">Tags (comma separated):</label><br/>
+  <input type="text" id="tags" name="tags" placeholder="e.g. quality, process, safety" /><br/><br/>
+
+  <button type="submit">Add SOP Summary</button>
+</form>
+{% endblock %}

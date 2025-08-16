@@ -3,6 +3,7 @@ from flask import Blueprint, request, jsonify, session
 from extensions import db
 from models import ReadLog
 from datetime import datetime
+import pytz
 from sqlalchemy import func
 
 bp = Blueprint('read_logs', __name__)
@@ -37,7 +38,7 @@ def mark_read():
             update_id=update_id,
             user_id=user_id if user_id else None,
             guest_name=None if user_id else guest_name,
-            timestamp=datetime.utcnow()
+            timestamp=datetime.now(pytz.UTC)
         )
         db.session.add(log)
         db.session.commit()

@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ summary.title }} – {{ app_name }}{% endblock %}
+
+{% block content %}
+  <span class="back-btn" onclick="window.history.back()">&larr; Back</span>
+  <h2>{{ summary.title }}</h2>
+  <p><strong>Department:</strong> {{ summary.department or 'N/A' }}</p>
+  <p><strong>Tags:</strong> {% if summary.tags %}{{ summary.tags|join(', ') }}{% else %}N/A{% endif %}</p>
+  <p>{{ summary.summary_text }}</p>
+  <small>Created on {{ summary.created_at.strftime('%d/%m/%Y') }}</small><br>
+  {% if summary.updated_at %}
+    <small>Updated on {{ summary.updated_at.strftime('%d/%m/%Y') }}</small>
+  {% endif %}
+{% endblock %}

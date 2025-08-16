@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block title %}Lessons Learned - {{ app_name }}{% endblock %}
+
+{% block content %}
+<h2>Lessons Learned</h2>
+
+{% if current_user %}
+  <a href="{{ url_for('add_lesson_learned') }}" class="btn btn-primary" style="margin-bottom: 1rem;">
+    + Add New Lesson Learned
+  </a>
+{% endif %}
+
+{% if lessons %}
+  <ul class="lessons-list">
+    {% for lesson in lessons %}
+      <li>
+        <a href="{{ url_for('view_lesson_learned', lesson_id=lesson.id) }}">
+          {{ lesson.title }}
+        </a>
+        {% if lesson.updated_at %}
+          <small> (Updated on {{ lesson.updated_at.strftime('%d/%m/%Y') }})</small>
+        {% else %}
+          <small> (Update date unknown)</small>
+        {% endif %}
+      </li>
+    {% endfor %}
+  </ul>
+{% else %}
+  <p>No lessons learned documented yet.</p>
+{% endif %}
+
+{% endblock %}
