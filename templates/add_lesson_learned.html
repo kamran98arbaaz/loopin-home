@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block title %}Add Lesson Learned - {{ app_name }}{% endblock %}
+
+{% block content %}
+<h2>Add New Lesson Learned</h2>
+
+<form method="POST" action="{{ url_for('add_lesson_learned') }}">
+  <label for="title">Title<span style="color:red">*</span>:</label><br/>
+  <input type="text" id="title" name="title" required maxlength="255" /><br/><br/>
+
+  <label for="content">Content<span style="color:red">*</span>:</label><br/>
+  <textarea id="content" name="content" rows="8" required></textarea><br/><br/>
+
+  <label for="summary">Summary (optional):</label><br/>
+  <textarea id="summary" name="summary" rows="4"></textarea><br/><br/>
+
+  <label for="author">Author:</label><br/>
+  <input type="text" id="author" name="author" maxlength="100" /><br/><br/>
+
+  <label for="department">Department:</label><br/>
+  <input type="text" id="department" name="department" maxlength="100" /><br/><br/>
+
+  <label for="tags">Tags (comma separated):</label><br/>
+  <input type="text" id="tags" name="tags" placeholder="e.g. project, quality, improvement" /><br/><br/>
+
+  <button type="submit">Add Lesson Learned</button>
+</form>
+{% endblock %}

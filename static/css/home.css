@@ -1,0 +1,432 @@
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
+.btn-edit, .edit-btn, .close-btn, .btn-close {
+  background-color: #2563eb;
+  color: #fff !important;
+  border-color: #2563eb;
+}
+.home {
+  padding: 1.5rem;
+  font-family: 'Roboto', 'Inter', Arial, sans-serif;
+  color: #1a1a1a;
+}
+
+/* Force all text to deep black */
+body, h1, h2, h3, h4, h5, h6, p, label, input, textarea, select, a, span, div, .tile, .panel, .card, .update-item, .navbar, .site-logo, .welcome, .author, .timestamp, .muted, .panel-list, .panel-list a, .panel-empty, .flash, .flash-success, .flash-error, .modal-content, .modal-actions, .update-header, .update-meta, .update-actions, .edit-btn, .delete-btn, .btn-edit, .btn-delete, .updates-list, .message, .author-info, .actions, .input-hint {
+  font-family: 'Roboto', 'Inter', Arial, sans-serif !important;
+  color: #1a1a1a !important;
+}
+
+.tile-row {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.tile {
+  flex: 1 1 calc(50% - 0.5rem);
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 1.25rem;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+  transition: transform 0.2s, box-shadow 0.2s;
+  text-decoration: none;
+  color: #1a1a1a !important;
+  font-family: 'Roboto', 'Inter', Arial, sans-serif;
+}
+.tile:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+}
+.tile:active {
+  transform: scale(0.98);
+}
+.tile h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #1a1a1a !important;
+  font-family: 'Roboto', 'Inter', Arial, sans-serif;
+}
+.tile p {
+  margin: 0;
+  color: #1a1a1a !important;
+  font-family: 'Roboto', 'Inter', Arial, sans-serif;
+}
+
+.tile-action {
+  cursor: pointer;
+}
+
+.panel {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 1.25rem;
+  background: #fff;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+  color: #111;
+  font-family: 'Inter', sans-serif;
+}
+
+.panel.hidden {
+  display: none;
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.panel-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.panel-list {
+  list-style: none;
+  padding-left: 1rem;
+  font-family: 'Roboto', 'Inter', Arial, sans-serif;
+  color: #1a1a1a;
+}
+
+.panel-list li {
+  margin-bottom: 0.5rem;
+}
+
+.panel-list a {
+  color: #1a1a1a !important;
+  text-decoration: none;
+  font-family: 'Roboto', 'Inter', Arial, sans-serif;
+}
+
+.panel-list a:hover {
+  text-decoration: underline;
+}
+
+.panel-empty {
+  color: #1a1a1a !important;
+  font-family: 'Roboto', 'Inter', Arial, sans-serif;
+}
+
+.btn {
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid transparent;
+  text-decoration: none;
+  font-family: 'Roboto', 'Inter', Arial, sans-serif;
+  color: #1a1a1a !important;
+  background: #2563eb;
+  transition: background 0.2s;
+}
+.btn-primary {
+  background-color: #2563eb;
+  color: #fff !important;
+  border-color: #2563eb;
+}
+.btn-primary:hover, .btn:hover {
+  background-color: #1d4ed8;
+}
+.btn-link {
+  background: none;
+  color: #2563eb !important;
+  border: none;
+  padding: 0.5rem;
+  font-family: 'Roboto', 'Inter', Arial, sans-serif;
+}
+
+/* ====== Enforce white-ish text for primary (blue) buttons ======
+   Some global rules set button text to dark via !important; this block
+   uses slightly higher specificity and !important to ensure buttons
+   with the primary/blue background show white text at ~90% opacity.
+   Excludes .secondary (yellow) buttons so they remain unchanged.
+*/
+.container .button:not(.secondary),
+.container .btn:not(.secondary),
+button:not(.secondary),
+input[type="submit"]:not(.secondary),
+.btn-primary,
+.btn-edit,
+.edit-btn,
+.btn-close,
+.close-btn {
+  color: rgba(255,255,255,0.9) !important;
+}
+
+/* Navbar buttons intentionally use a white background with blue outline —
+   restore that look so the rule above doesn't make header buttons white.
+*/
+.navbar .button {
+  color: #3f8efc !important;
+}
+
+/* ====== Search Results styles (moved from templates/search_results.html) ======
+   Scoped under .search-results-root so they only apply to the search results page.
+*/
+.search-results-root .search-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem; }
+.search-results-root .search-form { display:flex; gap:0.5rem; align-items:center; }
+.search-results-root .search-form input[type="search"] { padding:0.5rem 0.6rem; border:1px solid #dcdcdc; border-radius:6px; width:24rem; }
+.search-results-root .search-form button, .search-results-root .search-form .button { padding:0.45rem 0.8rem; border-radius:6px; background:#1976d2; color:rgba(255,255,255,0.9); border:0; cursor:pointer; }
+.search-results-root .search-form .button.secondary { background:#f2f2f2; color:#222; text-decoration:none; padding:0.45rem 0.8rem; border:1px solid #ddd; }
+
+.search-results-root .results-meta { margin-bottom:0.75rem; }
+.search-results-root .muted { color:#666; font-size:0.95rem; }
+
+.search-results-root .tabs { display:flex; gap:0.5rem; margin:0.75rem 0; }
+.search-results-root .tab-btn { padding:0.45rem 0.7rem; background:transparent; border:1px solid #e0e0e0; border-radius:6px; cursor:pointer; }
+.search-results-root .tab-btn.active { background:#1976d2; color:#fff; border-color:#1976d2; }
+.search-results-root .badge { background:#fff; color:#1976d2; border-radius:999px; padding:0.15rem 0.45rem; margin-left:0.4rem; font-weight:600; border:1px solid rgba(25,118,210,0.15); }
+
+.search-results-root .results-container {
+  margin-top: 2rem;
+  display: block;
+}
+.search-results-root .result-card {
+  border: none;
+  border-radius: 16px;
+  padding: 1.3rem 1.5rem 1.1rem 1.5rem;
+  margin-bottom: 1.5rem;
+  background: #f7fafd;
+  box-shadow: 0 2px 8px rgba(25, 118, 210, 0.07);
+  transition: box-shadow 0.18s, background 0.18s, transform 0.18s;
+  cursor: pointer;
+  position: relative;
+  min-height: 90px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.search-results-root .result-card:hover {
+  box-shadow: 0 8px 32px rgba(25, 118, 210, 0.13);
+  background: #eaf2fb;
+  transform: translateY(-2px) scale(1.012);
+}
+.search-results-root .result-card .meta {
+  color: #6b7280;
+  font-size: 1rem;
+  margin-bottom: 0.1rem;
+}
+.search-results-root .result-card .excerpt {
+  color: #23272f;
+  font-size: 1.08rem;
+  margin-bottom: 0.2rem;
+  line-height: 1.6;
+}
+.search-results-root .result-card .controls {
+  margin-top: 0.3rem;
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  align-items: center;
+}
+.search-results-root .result-card .open-btn {
+  min-width: 32px !important;
+  width: 32px !important;
+  height: 32px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 50% !important;
+  background: #1976d2 !important;
+  color: #fff !important;
+  text-decoration: none !important;
+  box-shadow: none !important;
+  border: none !important;
+  font-size: 0.95rem !important;
+  line-height: 1 !important;
+}
+.search-results-root .result-card .open-btn i {
+  font-size: 0.9rem !important;
+}
+.search-results-root .result-card .open-btn:hover { background: #1251a3 !important; }
+.search-results-root .result-card .open-btn::after {
+  content: '\2197'; /* North East Arrow */
+  font-size: 1.2em;
+  margin-left: 0.05em;
+}
+
+/* Expandable indicator: subtle chevron */
+.search-results-root .result-card::after {
+  content: '\25BC';
+  position: absolute;
+  right: 1.3rem;
+  top: 1.3rem;
+  font-size: 1.2em;
+  color: #b0b8c1;
+  opacity: 0.7;
+  transition: transform 0.18s, color 0.18s;
+}
+.search-results-root .result-card.expanded::after {
+  transform: rotate(180deg);
+  color: #1976d2;
+  opacity: 1;
+}
+
+/* Tabs: modern pill style */
+.search-results-root .tabs {
+  display: flex;
+  gap: 0.7rem;
+  margin: 1.5rem 0 1.1rem 0;
+}
+.search-results-root .tab-btn {
+  padding: 0.5rem 1.2rem;
+  background: #f2f6fa;
+  border: none;
+  border-radius: 999px;
+  color: #1976d2;
+  font-weight: 500;
+  font-size: 1.08rem;
+  cursor: pointer;
+  transition: background 0.16s, color 0.16s;
+  outline: none;
+}
+.search-results-root .tab-btn.active {
+  background: #1976d2;
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(25, 118, 210, 0.10);
+}
+.search-results-root .badge {
+  background: #fff;
+  color: #1976d2;
+  border-radius: 999px;
+  padding: 0.15rem 0.55rem;
+  margin-left: 0.5rem;
+  font-weight: 600;
+  border: none;
+  font-size: 0.98em;
+}
+
+/* Search form: more space, even buttons, soft border */
+.search-results-root .search-form {
+  display: flex;
+  gap: 0.7rem;
+  align-items: center;
+  background: #f7fafd;
+  border-radius: 10px;
+  padding: 0.7rem 1rem;
+  box-shadow: 0 1px 4px rgba(25, 118, 210, 0.04);
+  flex-wrap: nowrap; /* keep buttons on same row */
+}
+.search-results-root .search-form input[type="search"] {
+  flex: 1 1 auto; /* allow input to take remaining space */
+  min-width: 120px;
+  padding: 0.6rem 1rem;
+  border: 1.5px solid #d0d7e2;
+  border-radius: 7px;
+  width: auto; /* avoid forcing fixed width */
+}
+.search-results-root .search-form button,
+.search-results-root .search-form .button.secondary {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.55rem 0.9rem; /* same padding for both */
+  border-radius: 7px;
+  margin: 0; /* remove accidental margins */
+}
+
+/* Ensure Search and Clear sit inline and share same sizing in search-results header
+   Override any global rules that make .button display:block or width:100% */
+.search-results-root .search-form > button,
+.search-results-root .search-form > .button.secondary,
+.search-results-root .search-form > a.button.secondary {
+  display: inline-flex !important;
+  width: auto !important;
+  align-items: center;
+  justify-content: center;
+  padding: 0.55rem 0.9rem !important; /* match padding */
+  margin: 0 !important;
+  box-sizing: border-box;
+}
+
+/* Ensure the input and buttons stay on one line unless on mobile */
+.search-results-root .search-form {
+  flex-wrap: nowrap; /* stronger enforcement */
+}
+
+/* Keep mobile behavior: allow stacking on small screens */
+@media (max-width: 640px) {
+  .search-results-root .search-form {
+    flex-direction: column;
+    gap: 0.5rem;
+    align-items: stretch;
+    flex-wrap: wrap;
+  }
+  .search-results-root .search-form button,
+  .search-results-root .search-form .button.secondary {
+    width: 100%;
+    min-width: 0;
+  }
+  .search-results-root .search-form input[type="search"] {
+    width: 100%;
+  }
+}
+
+/* Button size standardization - mirror the global standards from style.css
+   This provides high-specificity overrides so home.css won't contradict the
+   global button sizing and font-size decisions. Keep icon-only circular
+   buttons as exceptions. */
+:root {
+  --btn-font-size: 0.9rem;
+  --btn-padding-vert: 0.4rem;
+  --btn-padding-horiz: 0.85rem;
+  --btn-min-height: 36px;
+  --btn-border-radius: 8px;
+  --btn-font-weight: 500;
+}
+
+.button, button, .btn, input[type="submit"], .btn-primary, .btn-edit, .edit-btn, .btn-close, .close-btn, .tab-btn, .search-results-root .search-form button, .search-results-root .search-form .button {
+  padding: var(--btn-padding-vert) var(--btn-padding-horiz) !important;
+  font-size: var(--btn-font-size) !important;
+  min-height: var(--btn-min-height) !important;
+  height: auto !important;
+  border-radius: var(--btn-border-radius) !important;
+  font-weight: var(--btn-font-weight) !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  box-sizing: border-box !important;
+}
+
+/* Preserve circular icon button sizing on search results */
+.search-results-root .result-card .open-btn {
+  min-width: var(--btn-min-height) !important;
+  width: var(--btn-min-height) !important;
+  height: var(--btn-min-height) !important;
+  padding: 0 !important;
+  font-size: 1.2rem !important;
+}
+
+/* Small inline utility buttons */
+.btn.small, .btn-xs {
+  padding: 0.3rem 0.55rem !important;
+  min-height: 30px !important;
+  font-size: 0.85rem !important;
+}
+
+/* Search input/button standardized to match global button sizing */
+.search-input {
+  padding: var(--btn-padding-vert) var(--btn-padding-horiz) !important;
+  border-radius: var(--btn-border-radius) !important;
+  border: 1px solid #ccc !important;
+  font-size: var(--btn-font-size) !important;
+  min-height: var(--btn-min-height) !important;
+  width: 300px; /* keep intended width but allow overrides on smaller screens */
+  box-sizing: border-box;
+}
+
+.search-btn {
+  padding: var(--btn-padding-vert) var(--btn-padding-horiz) !important;
+  font-size: var(--btn-font-size) !important;
+  min-height: var(--btn-min-height) !important;
+}
+
+@media (max-width: 640px) {
+  .search-input { width: 100% !important; }
+}

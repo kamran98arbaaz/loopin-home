@@ -5,7 +5,7 @@
   <h2>All Updates</h2>
   <ul class="updates-list">
     {% for update in updates %}
-      <li class="update-item {% if update.is_new %}new-update{% endif %}" data-update-id="{{ update.id }}">
+      <li id="update-{{ update.id }}" class="update-item {% if update.is_new %}new-update{% endif %}" data-update-id="{{ update.id }}">
         <div class="update-header">
           <span class="author-info">
             {% if update.is_new %}
@@ -32,4 +32,34 @@
       <li class="update-item">No updates yet. Be the first to post!</li>
     {% endfor %}
   </ul>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const hash = window.location.hash;
+  if (hash && hash.startsWith('#update-')) {
+    const el = document.querySelector(hash);
+    if (el) {
+      el.classList.add('search-highlight');
+      setTimeout(() => {
+        el.classList.remove('search-highlight');
+      }, 1200);
+      el.scrollIntoView({behavior: 'smooth', block: 'center'});
+    }
+  }
+});
+</script>
+<style>
+.update-item.search-highlight {
+  animation: blink-highlight 1.2s linear 1;
+  background: #fffbe6 !important;
+}
+@keyframes blink-highlight {
+  0% { background: #fffbe6; }
+  30% { background: #ffe066; }
+  60% { background: #fffbe6; }
+  100% { background: inherit; }
+}
+</style>
 {% endblock %}

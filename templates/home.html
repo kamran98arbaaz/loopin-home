@@ -3,15 +3,109 @@
 
 {% block title %}Home – {{ app_name }}{% endblock %}
 
+{% block head %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/home.css') }}">
+{% endblock %}
+
 {% block content %}
-  <div class="tiles">
-    <a href="{{ url_for('show_updates') }}" class="tile" id="showUpdatesTile">
+<!-- Search Bar -->
+<div style="margin-bottom: 2rem; text-align:center;">
+  <form action="{{ url_for('search') }}" method="GET" style="display:inline-flex; gap:0.5rem;">
+  <input type="text" name="q" placeholder="Search updates, SOPs, lessons..." class="search-input">
+  <button type="submit" class="button search-btn secondary">Search</button>
+  </form>
+</div>
+
+<div class="home">
+  <!-- Live updates widget -->
+  <section class="live-updates mb-6">
+    <div class="max-w-3xl mx-auto">
+      <div id="updates-widget" class="p-4 bg-white rounded shadow">
+        <h3 class="text-lg font-semibold">Latest Updates</h3>
+        <div id="updates-list" class="mt-2">Loading…</div>
+      </div>
+    </div>
+  </section>
+  <div class="tile-row">
+  <a href="{{ url_for('show_updates') }}" class="tile tile-link" id="showUpdatesTile">
       <h2>Show Updates</h2>
       <p>Browse all team updates in one place.</p>
     </a>
-    <a href="{{ url_for('post_update') }}" class="tile">
+
+    <a href="{{ url_for('post_update') }}" class="tile tile-link" id="tile-post">
       <h2>Post a New Update</h2>
       <p>Share your latest status with the team.</p>
     </a>
   </div>
+
+  <div class="tile-row">
+    <button type="button" class="tile tile-action" id="tile-sop" aria-expanded="false" aria-controls="panel-sop">
+      <h2>SOP Summaries</h2>
+      <p>Browse and search SOP summaries.</p>
+    </button>
+
+    <button type="button" class="tile tile-action" id="tile-lessons" aria-expanded="false" aria-controls="panel-lessons">
+      <h2>Lessons Learned</h2>
+      <p>Explore documented lessons learned.</p>
+    </button>
+  </div>
+
+  <!-- SOP Panel -->
+  <section id="panel-sop" class="panel hidden" aria-hidden="true">
+    <div class="panel-header">
+      <h2>SOP Summaries</h2>
+      <div class="panel-actions">
+        <a href="{{ url_for('add_sop_summary') }}" class="btn btn-primary">＋ Add New</a>
+        <button type="button" class="btn btn-link" id="close-sop">← Back</button>
+      </div>
+    </div>
+
+    {% if summaries %}
+      <ul class="panel-list">
+        {% for summary in summaries %}
+          <li>
+            <a href="{{ url_for('view_sop_summary', summary_id=summary.id) }}">{{ summary.title }}</a>
+            {% if summary.created_at %}
+              <small>(Created on {{ summary.created_at.strftime('%d/%m/%Y') }})</small>
+            {% else %}
+              <small>(Date unknown)</small>
+            {% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="panel-empty">No SOP summaries available yet.</p>
+    {% endif %}
+  </section>
+
+  <!-- Lessons Panel -->
+  <section id="panel-lessons" class="panel hidden" aria-hidden="true">
+    <div class="panel-header">
+      <h2>Lessons Learned</h2>
+      <div class="panel-actions">
+        <a href="{{ url_for('add_lesson_learned') }}" class="btn btn-primary">＋ Add New</a>
+        <button type="button" class="btn btn-link" id="close-lessons">← Back</button>
+      </div>
+    </div>
+
+    {% if lessons %}
+      <ul class="panel-list">
+        {% for lesson in lessons %}
+          <li>
+            <a href="{{ url_for('view_lesson_learned', lesson_id=lesson.id) }}">{{ lesson.title }}</a>
+            {% if lesson.created_at %}
+              <small>(Created on {{ lesson.created_at.strftime('%d/%m/%Y') }})</small>
+            {% else %}
+              <small>(Date unknown)</small>
+            {% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="panel-empty">No lessons learned documented yet.</p>
+    {% endif %}
+  </section>
+</div>
+
+<script src="{{ url_for('static', filename='js/home.js') }}"></script>
 {% endblock %}

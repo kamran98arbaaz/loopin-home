@@ -25,5 +25,6 @@ def test_get_updates_empty(tmp_path, monkeypatch):
     resp = client.get("/api/updates")
     assert resp.status_code == 200
     data = json.loads(resp.data)
-    assert "updates" in data
-    assert isinstance(data["updates"], list)
+    # New API returns paginated structure
+    assert "items" in data and "meta" in data
+    assert isinstance(data["items"], list)

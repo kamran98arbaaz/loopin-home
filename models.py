@@ -69,3 +69,50 @@ class ReadLog(db.Model):
 
     def reader_display(self):
         return self.user.display_name if self.user_id else self.guest_name
+
+
+class SOPSummary(db.Model):
+    __tablename__ = "sop_summaries"
+
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    title = db.Column(db.String(255), nullable=False)
+    summary_text = db.Column(db.Text, nullable=False)
+    department = db.Column(db.String(100), nullable=True)
+    tags = db.Column(db.ARRAY(db.String), nullable=True)  # PostgreSQL array of tags
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "title": self.title,
+            "summary_text": self.summary_text,
+            "department": self.department,
+            "tags": self.tags,
+            "created_at": self.created_at.isoformat(),
+        }
+
+
+class LessonLearned(db.Model):
+    __tablename__ = "lessons_learned"
+
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    title = db.Column(db.String(255), nullable=False)
+    content = db.Column(db.Text, nullable=False)  # Full text of the lesson learned
+    summary = db.Column(db.Text, nullable=True)  # Optional short summary
+    author = db.Column(db.String(100), nullable=True)
+    department = db.Column(db.String(100), nullable=True)
+    tags = db.Column(db.ARRAY(db.String), nullable=True)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "title": self.title,
+            "content": self.content,
+            "summary": self.summary,
+            "author": self.author,
+            "department": self.department,
+            "tags": self.tags,
+            "created_at": self.created_at.isoformat(),
+        }

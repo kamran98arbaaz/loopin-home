@@ -1,0 +1,177 @@
+{% extends 'base.html' %}
+
+{% block title %}Search Results – {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="search-results-root">
+  <div class="search-header">
+    <form class="search-form" method="get" action="{{ url_for('search') }}">
+      <input name="q" type="search" aria-label="Search" value="{{ query }}" placeholder="Search updates, SOPs, lessons..." />
+      <button type="submit">Search</button>
+      <a href="{{ url_for('home') }}" class="button secondary">Clear</a>
+    </form>
+    <div style="text-align:right">
+      <small class="muted">Tip: click a result to open, or expand for a quick preview</small>
+    </div>
+  </div>
+
+  <div class="results-meta">
+    <h2>Search Results for "<span class="query-text">{{ query }}</span>"</h2>
+    <p class="muted">Found <strong>Updates {{ results.updates|length if results.updates else 0 }}</strong> <strong>SOPs {{ results.sops|length if results.sops else 0 }}</strong> <strong>Lessons {{ results.lessons|length if results.lessons else 0 }}</strong></p>
+  </div>
+
+  <div class="tabs" role="tablist" aria-label="Search result categories">
+    <button class="tab-btn active" data-target="updates" role="tab" aria-selected="true">Updates&nbsp;<span class="badge">{{ results.updates|length if results.updates else 0 }}</span></button>
+    <button class="tab-btn" data-target="sops" role="tab" aria-selected="false">SOPs&nbsp;<span class="badge">{{ results.sops|length if results.sops else 0 }}</span></button>
+    <button class="tab-btn" data-target="lessons" role="tab" aria-selected="false">Lessons&nbsp;<span class="badge">{{ results.lessons|length if results.lessons else 0 }}</span></button>
+  </div>
+
+  <div class="results-container">
+    <div id="updates" class="result-pane active" role="tabpanel">
+      {% if results.updates %}
+        {% for upd in results.updates %}
+          <article class="result-card">
+            <div>
+              <a href="{{ upd.url }}" class="link title">{{ upd.title }}</a>
+              <div class="meta">
+                <small>{{ upd.timestamp.strftime('%d/%m/%Y %H:%M') if upd.timestamp else '' }}</small>
+                {% if upd.author %}<small>&middot; {{ upd.author }}</small>{% endif %}
+              </div>
+            </div>
+
+            <div class="excerpt" data-full="{{ (upd.content|e) if upd.content else '' }}">
+              {% if upd.content %}{{ upd.content[:300] }}{% endif %}
+              {% if upd.content and upd.content|length > 300 %}...{% endif %}
+            </div>
+
+            <div class="controls">
+              <a href="{{ upd.url }}" class="open-btn" aria-label="Open result"><i class="fas fa-external-link-alt" aria-hidden="true"></i></a>
+            </div>
+          </article>
+        {% endfor %}
+      {% else %}
+        <p>No updates matched.</p>
+      {% endif %}
+    </div>
+
+    <div id="sops" class="result-pane" role="tabpanel">
+      {% if results.sops %}
+        {% for sop in results.sops %}
+          <article class="result-card">
+            <div>
+              <a href="{{ sop.url }}" class="link title">{{ sop.title }}</a>
+              <div class="meta"><small>{{ sop.department if sop.department else '' }}</small></div>
+            </div>
+
+            <div class="excerpt" data-full="{{ (sop.summary|e) if sop.summary else '' }}">
+              {% if sop.summary %}{{ sop.summary[:300] }}{% endif %}{% if sop.summary and sop.summary|length > 300 %}...{% endif %}
+            </div>
+
+            <div class="controls">
+              <a href="{{ sop.url }}" class="open-btn" aria-label="Open SOP"><i class="fas fa-external-link-alt" aria-hidden="true"></i></a>
+            </div>
+          </article>
+        {% endfor %}
+      {% else %}
+        <p>No SOP summaries matched.</p>
+      {% endif %}
+    </div>
+
+    <div id="lessons" class="result-pane" role="tabpanel">
+      {% if results.lessons %}
+        {% for lesson in results.lessons %}
+          <article class="result-card">
+            <div>
+              <a href="{{ lesson.url }}" class="link title">{{ lesson.title }}</a>
+              <div class="meta"><small>{{ lesson.category if lesson.category else '' }}</small></div>
+            </div>
+
+            <div class="excerpt" data-full="{{ (lesson.content|e) if lesson.content else '' }}">
+              {% if lesson.content %}{{ lesson.content[:300] }}{% endif %}{% if lesson.content and lesson.content|length > 300 %}...{% endif %}
+            </div>
+
+            <div class="controls">
+              <a href="{{ lesson.url }}" class="open-btn" aria-label="Open lesson"><i class="fas fa-external-link-alt" aria-hidden="true"></i></a>
+            </div>
+          </article>
+        {% endfor %}
+      {% else %}
+        <p>No lessons matched.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <script>
+    (function(){
+      // Tab switching
+      const tabs = document.querySelectorAll('.tab-btn');
+      tabs.forEach(btn => btn.addEventListener('click', (e) => {
+        tabs.forEach(b => { b.classList.remove('active'); b.setAttribute('aria-selected','false'); });
+        e.currentTarget.classList.add('active');
+        e.currentTarget.setAttribute('aria-selected','true');
+        const target = e.currentTarget.getAttribute('data-target');
+        document.querySelectorAll('.result-pane').forEach(p => p.classList.remove('active'));
+        const pane = document.getElementById(target);
+        if (pane) pane.classList.add('active');
+      }));
+
+      // card click toggles preview to reduce button clutter
+      function unescapeHtml(escaped){
+        const div = document.createElement('div'); div.innerHTML = escaped; return div.textContent || div.innerText || '';
+      }
+
+      function toggleCard(card){
+        const excerptEl = card.querySelector('.excerpt');
+        const full = excerptEl.getAttribute('data-full') || '';
+        if (!card.classList.contains('expanded')) {
+          excerptEl.textContent = unescapeHtml(full);
+          card.classList.add('expanded');
+        } else {
+          const text = unescapeHtml(full);
+          excerptEl.textContent = text.length > 300 ? text.slice(0,300) + '...' : text;
+          card.classList.remove('expanded');
+        }
+        highlightQueryIn(card);
+      }
+
+      document.querySelectorAll('.result-card').forEach(card => {
+        card.addEventListener('click', (e) => {
+          // Ignore clicks on links/buttons inside the card (they have their own action)
+          if (e.target.closest('a') || e.target.closest('button')) return;
+          toggleCard(card);
+        });
+      });
+
+      // Highlight query terms in results (unchanged)
+      function highlightQueryIn(root){
+        const q = (document.querySelector('.query-text')||{}).textContent || '';
+        if (!q) return;
+        const terms = q.trim().split(/\s+/).filter(Boolean).map(t => t.replace(/[.*+?^${}()|[\\]\\]/g,'\\$&'));
+        if (!terms.length) return;
+        const regex = new RegExp('(' + terms.join('|') + ')', 'gi');
+
+        root.querySelectorAll('.title, .excerpt').forEach(el => {
+          const text = el.textContent || '';
+          const highlighted = text.replace(regex, '<mark class="search-hit">$1</mark>');
+          el.innerHTML = highlighted;
+        });
+      }
+
+      // Initial highlight for visible pane
+      document.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('.result-pane.active .result-card').forEach(card => highlightQueryIn(card));
+      });
+
+      // Also highlight after any tab switch
+      tabs.forEach(b => b.addEventListener('click', () => {
+        setTimeout(() => {
+          document.querySelectorAll('.result-pane.active .result-card').forEach(card => highlightQueryIn(card));
+        }, 50);
+      }));
+
+    })();
+  </script>
+
+  <a href="{{ url_for('home') }}" class="button" style="margin-top:1rem; display:inline-block;">&larr; Back to Home</a>
+</div>
+{% endblock %}

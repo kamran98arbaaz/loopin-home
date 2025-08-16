@@ -1,4 +1,5 @@
 import os 
+import time
 import uuid
 import pytz
 import re
@@ -24,6 +25,9 @@ login_manager = LoginManager()
 login_manager.login_view = 'login'
 
 IST = pytz.timezone("Asia/Kolkata")
+
+# Process start timestamp for basic metrics
+APP_START = time.time()
 
 def create_app(config_name=None):
     app = Flask(__name__)
@@ -86,14 +90,118 @@ def create_app(config_name=None):
             user = User.query.get(session["user_id"])
         return dict(current_user=user)
 
+    @app.context_processor
+    def built_assets_available():
+        """Expose a small flag to templates indicating whether built CSS exists.
+
+        Templates can use `built_css` to prefer a local built stylesheet
+        (e.g. `static/dist/styles.css`) when present, otherwise fall back
+        to a CDN link. This keeps CI builds optional and safe for local dev.
+        """
+        try:
+            static_path = os.path.join(app.root_path, "static", "dist", "styles.css")
+            is_prod = str(app.config.get('ENV', '')).lower() == 'production' or os.getenv('FLASK_ENV', '').lower() == 'production' or os.getenv('ENV', '').lower() == 'production'
+            return dict(built_css=os.path.exists(static_path), is_production=is_prod)
+        except Exception:
+            return dict(built_css=False, is_production=False)
+
     # Routes    
     @app.route("/health")
     def health():
+        out = {"db": None, "redis": None}
+        code = 200
         try:
             db.session.execute(text("SELECT 1"))
-            return jsonify({"status": "ok", "db": "reachable"}), 200
+            out["db"] = "reachable"
         except Exception as e:
-            return jsonify({"status": "error", "db": str(e)}), 500
+            out["db"] = str(e)
+            code = 500
+
+        # Try to import the Redis health helper from the API module if present
+        try:
+            from api.updates import is_redis_healthy
+            try:
+                out["redis"] = "ok" if is_redis_healthy() else "unavailable"
+                if out["redis"] != "ok":
+                    code = max(code, 503)
+            except Exception as re:
+                out["redis"] = f"error: {re}"
+                code = max(code, 500)
+        except Exception:
+            # If redis helper not available, just omit it
+            out.pop("redis", None)
+
+        status = "ok" if code == 200 else "error"
+        out["status"] = status
+        return jsonify(out), code
+
+    try:
+        from prometheus_client import CollectorRegistry, Gauge, generate_latest, CONTENT_TYPE_LATEST
+        registry = CollectorRegistry()
+        g_uptime = Gauge('app_uptime_seconds', 'App uptime in seconds', registry=registry)
+        g_updates = Gauge('updates_total', 'Total updates', registry=registry)
+        g_redis = Gauge('redis_up', 'Redis up (1/0)', registry=registry)
+
+        @app.route('/metrics')
+        def metrics():
+            try:
+                g_uptime.set(int(time.time() - APP_START))
+            except Exception:
+                g_uptime.set(0)
+            try:
+                g_updates.set(int(Update.query.count()))
+            except Exception:
+                g_updates.set(0)
+            try:
+                from api.updates import is_redis_healthy
+                g_redis.set(1 if is_redis_healthy() else 0)
+            except Exception:
+                g_redis.set(0)
+            data = generate_latest(registry)
+            return (data, 200, {'Content-Type': CONTENT_TYPE_LATEST})
+    except Exception:
+        # If prometheus_client not available, keep the small plaintext /metrics
+        @app.route('/metrics')
+        def metrics_plain():
+            lines = []
+            try:
+                uptime = time.time() - APP_START
+                lines.append(f"app_uptime_seconds {int(uptime)}")
+            except Exception:
+                lines.append("app_uptime_seconds 0")
+            try:
+                total = Update.query.count()
+                lines.append(f"updates_total {int(total)}")
+            except Exception:
+                lines.append("updates_total 0")
+            try:
+                from api.updates import is_redis_healthy
+                ok = is_redis_healthy()
+                lines.append(f"redis_up {1 if ok else 0}")
+            except Exception:
+                lines.append("redis_up 0")
+            return ("\n".join(lines), 200, {"Content-Type": "text/plain; version=0.0.4"})
+
+    @app.route('/health/alert', methods=['POST'])
+    def health_alert():
+        """Trigger a POST to a configured alert webhook with current health status.
+
+        Useful for manual or automated alerting during deployment checks.
+        Configure `HEALTH_ALERT_URL` in the environment to enable.
+        """
+        url = os.getenv('HEALTH_ALERT_URL')
+        if not url:
+            return jsonify({'error': 'no_webhook_configured'}), 400
+        try:
+            import requests
+            # Reuse /health to get current status
+            with app.test_client() as c:
+                resp = c.get('/health')
+                payload = resp.get_json()
+            r = requests.post(url, json=payload, timeout=5)
+            return jsonify({'status': 'sent', 'response_code': r.status_code}), 200
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
 
     @app.route("/lessons_learned/view/<int:lesson_id>")
     @login_required
@@ -174,18 +282,18 @@ def create_app(config_name=None):
         )
 
         updates = []
-        now_utc = datetime.utcnow().replace(tzinfo=pytz.UTC)
+        now_utc = datetime.now(pytz.UTC)
         for upd, count in rows:
             d = upd.to_dict()
             d['read_count'] = count
-            
+
             # determine if it's within last 24 hours
             if upd.timestamp.tzinfo is None:
                 ts_utc = upd.timestamp.replace(tzinfo=pytz.UTC)
             else:
                 ts_utc = upd.timestamp.astimezone(pytz.UTC)
-            d['is_new'] = (now_utc - ts_utc) <= timedelta(hours=24)    
-                
+            d['is_new'] = (now_utc - ts_utc) <= timedelta(hours=24)
+
             updates.append(d)
 
         return render_template("show.html", app_name=app.config["APP_NAME"], updates=updates)
@@ -209,7 +317,7 @@ def create_app(config_name=None):
                 name=name,
                 process=selected_process,
                 message=message,
-                timestamp=datetime.utcnow().replace(tzinfo=pytz.UTC),
+                timestamp=datetime.now(pytz.UTC),
             )
             try:
                 db.session.add(new_update)
@@ -237,7 +345,7 @@ def create_app(config_name=None):
                 flash("⚠️ Message cannot be empty.")
                 return redirect(url_for("edit_update", update_id=update_id))
             update.message = new_message
-            update.timestamp = datetime.utcnow().replace(tzinfo=pytz.UTC)
+            update.timestamp = datetime.now(pytz.UTC)
             try:
                 db.session.commit()
                 flash("✏️ Update edited successfully.")

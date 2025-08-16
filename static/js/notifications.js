@@ -25,8 +25,6 @@ async function checkForNewUpdate() {
       // 🍞 Show toast message
       showToast("🔔 New update posted!");
 
-      // Add highlight to tile
-      document.getElementById('showUpdatesTile')?.classList.add('highlight');
     }
   } catch (error) {
     console.error('Error fetching latest update time:', error);

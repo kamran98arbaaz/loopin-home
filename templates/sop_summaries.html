@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block title %}SOP Summaries - {{ app_name }}{% endblock %}
+
+{% block content %}
+<h2>SOP Summaries</h2>
+
+{% if current_user %}
+  <a href="{{ url_for('add_sop_summary') }}" class="btn btn-primary" style="margin-bottom: 1rem;">
+    + Add New SOP Summary
+  </a>
+{% endif %}
+
+{% if summaries %}
+  <ul class="summary-list">
+    {% for summary in summaries %}
+      <li>
+        <a href="{{ url_for('view_sop_summary', summary_id=summary.id) }}">
+          {{ summary.title }}
+        </a>
+        <small> (Updated on {{ summary.updated_at.strftime('%d/%m/%Y') }})</small>
+      </li>
+    {% endfor %}
+  </ul>
+{% else %}
+  <p>No SOP summaries available yet.</p>
+{% endif %}
+
+{% endblock %}
