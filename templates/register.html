@@ -1,53 +1,376 @@
-{% extends "base.html" %}
+{% extends 'base.html' %}
 
 {% block title %}Register – {{ app_name }}{% endblock %}
 
+{% block head %}
+  <style>
+    .auth-container {
+      max-width: 450px;
+      margin: 0 auto;
+      padding: var(--space-8) var(--space-4);
+    }
+
+    .auth-card {
+      background: white;
+      border-radius: var(--radius-2xl);
+      padding: var(--space-8);
+      box-shadow: var(--shadow-xl);
+      border: 1px solid var(--gray-200);
+    }
+
+    .auth-header {
+      text-align: center;
+      margin-bottom: var(--space-8);
+    }
+
+    .auth-title {
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--gray-900);
+      margin-bottom: var(--space-2);
+    }
+
+    .auth-subtitle {
+      color: var(--gray-600);
+      font-size: 1rem;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--space-4);
+    }
+
+    .form-group {
+      margin-bottom: var(--space-6);
+    }
+
+    .form-group.full-width {
+      grid-column: 1 / -1;
+    }
+
+    .form-label {
+      display: block;
+      margin-bottom: var(--space-2);
+      font-weight: 500;
+      color: var(--gray-700);
+      font-size: 0.9rem;
+    }
+
+    .form-input {
+      width: 100%;
+      padding: var(--space-4);
+      border: 2px solid var(--gray-200);
+      border-radius: var(--radius-lg);
+      font-size: 1rem;
+      transition: all var(--transition-normal);
+      background: white;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .form-input:focus {
+      outline: none;
+      border-color: var(--primary-500);
+      box-shadow: 0 0 0 4px var(--primary-100);
+      transform: translateY(-2px);
+    }
+
+    .form-input::placeholder {
+      color: var(--gray-400);
+    }
+
+    .form-input.error {
+      border-color: var(--error-500);
+      box-shadow: 0 0 0 4px var(--error-100);
+    }
+
+    .form-error {
+      color: var(--error-600);
+      font-size: 0.85rem;
+      margin-top: var(--space-1);
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+    }
+
+    .form-error i {
+      font-size: 0.8rem;
+    }
+
+    .form-submit {
+      width: 100%;
+      padding: var(--space-4);
+      background: linear-gradient(135deg, var(--primary-600), var(--primary-700));
+      color: white;
+      border: none;
+      border-radius: var(--radius-lg);
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all var(--transition-normal);
+      box-shadow: var(--shadow-md);
+    }
+
+    .form-submit:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-lg);
+    }
+
+    .form-submit:active {
+      transform: translateY(0);
+    }
+
+    .form-submit:disabled {
+      background: var(--gray-400);
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .auth-footer {
+      text-align: center;
+      margin-top: var(--space-6);
+      padding-top: var(--space-6);
+      border-top: 1px solid var(--gray-200);
+    }
+
+    .auth-link {
+      color: var(--primary-600);
+      text-decoration: none;
+      font-weight: 500;
+      transition: color var(--transition-fast);
+    }
+
+    .auth-link:hover {
+      color: var(--primary-700);
+    }
+
+    .terms-checkbox {
+      display: flex;
+      align-items: flex-start;
+      gap: var(--space-3);
+      margin-bottom: var(--space-6);
+    }
+
+    .terms-checkbox input[type="checkbox"] {
+      margin-top: var(--space-1);
+      width: 18px;
+      height: 18px;
+      accent-color: var(--primary-600);
+    }
+
+    .terms-checkbox label {
+      font-size: 0.9rem;
+      color: var(--gray-700);
+      line-height: 1.5;
+    }
+
+    .terms-checkbox a {
+      color: var(--primary-600);
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    .terms-checkbox a:hover {
+      text-decoration: underline;
+    }
+
+    .password-strength {
+      margin-top: var(--space-2);
+    }
+
+    .strength-bar {
+      height: 4px;
+      background: var(--gray-200);
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+      margin-bottom: var(--space-2);
+    }
+
+    .strength-fill {
+      height: 100%;
+      transition: all var(--transition-normal);
+      border-radius: var(--radius-sm);
+    }
+
+    .strength-weak .strength-fill {
+      background: var(--error-500);
+      width: 25%;
+    }
+
+    .strength-fair .strength-fill {
+      background: var(--warning-500);
+      width: 50%;
+    }
+
+    .strength-good .strength-fill {
+      background: var(--warning-500);
+      width: 75%;
+    }
+
+    .strength-strong .strength-fill {
+      background: var(--success-500);
+      width: 100%;
+    }
+
+    .strength-text {
+      font-size: 0.8rem;
+      color: var(--gray-600);
+    }
+
+    @media (max-width: 480px) {
+      .auth-container {
+        padding: var(--space-6) var(--space-3);
+      }
+
+      .auth-card {
+        padding: var(--space-6);
+      }
+
+      .auth-title {
+        font-size: 1.75rem;
+      }
+
+      .form-row {
+        grid-template-columns: 1fr;
+        gap: 0;
+      }
+    }
+  </style>
+{% endblock %}
+
 {% block content %}
-  <div class="auth-form">
-    <h2>Register</h2>
-    <form method="post" action="{{ url_for('register') }}">
-      <label for="display_name">Full Name</label>
-      <input
-        id="display_name"
-        name="display_name"
-        type="text"
-        placeholder="e.g. Bruce Wayne"
-        required
-      />
+<div class="auth-container">
+  <div class="auth-card">
+    <div class="auth-header">
+      <h1 class="auth-title">Join LoopIn</h1>
+      <p class="auth-subtitle">Create your account to get started</p>
+    </div>
 
-      <label for="username">Login Username</label>
-      <input
-        id="username"
-        name="username"
-        type="text"
-        placeholder="e.g. bruce_wayne"
-        required
-        autofocus
-      />
-      <small class="input-hint">Only letters, numbers, and underscores allowed.</small>
+    <form method="POST" id="registerForm">
+      <div class="form-group">
+        <label for="display_name" class="form-label">Full Name</label>
+        <input
+          type="text"
+          id="display_name"
+          name="display_name"
+          class="form-input"
+          placeholder="e.g., Bruce Wayne"
+          required
+          autocomplete="name"
+        >
 
-      <label for="password">Password</label>
-      <input
-        id="password"
-        name="password"
-        type="password"
-        required
-      />
+      </div>
 
-      <label for="confirm_password">Confirm Password</label>
-      <input
-        id="confirm_password"
-        name="confirm_password"
-        type="password"
-        required
-      />
+      <div class="form-group">
+        <label for="username" class="form-label">Username</label>
+        <input
+          type="text"
+          id="username"
+          name="username"
+          class="form-input"
+          placeholder="e.g., bruce_wayne"
+          required
+          autocomplete="username"
+        >
 
-      <button type="submit">Register</button>
+      </div>
+
+      <div class="form-group">
+        <label for="password" class="form-label">Password</label>
+        <input
+          type="password"
+          id="password"
+          name="password"
+          class="form-input"
+          placeholder="minimum 8 characters"
+          required
+          autocomplete="new-password"
+          minlength="8"
+        >
+
+      </div>
+
+      <button type="submit" class="form-submit" id="submitBtn">
+        <i class="fas fa-user-plus"></i>
+        Create Account
+      </button>
     </form>
 
-    <p class="alternative-action">
-      Already have an account?
-      <a href="{{ url_for('login') }}">Login here</a>.
-    </p>
+    <div class="auth-footer">
+      <p>Already have an account? 
+        <a href="{{ url_for('login') }}" class="auth-link">Sign in here</a>
+      </p>
+    </div>
   </div>
+</div>
+
+<script>
+  // Form validation
+  document.getElementById('registerForm').addEventListener('submit', function(e) {
+    const displayName = document.getElementById('display_name').value.trim();
+    const username = document.getElementById('username').value.trim();
+    const password = document.getElementById('password').value;
+
+    // Basic validation
+    if (!displayName) {
+      e.preventDefault();
+      alert('Display name is required!');
+      return;
+    }
+
+    if (!username) {
+      e.preventDefault();
+      alert('Username is required!');
+      return;
+    }
+
+    // Username format validation
+    if (!/^[A-Za-z0-9_]+$/.test(username)) {
+      e.preventDefault();
+      alert('Username can only contain letters, numbers, and underscores!');
+      return;
+    }
+
+    if (password.length < 8) {
+      e.preventDefault();
+      alert('Password must be at least 8 characters long!');
+      return;
+    }
+
+    // Show loading state
+    const submitBtn = document.getElementById('submitBtn');
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating Account...';
+  });
+
+  // Real-time validation feedback
+  document.querySelectorAll('.form-input').forEach(input => {
+    input.addEventListener('blur', function() {
+      if (this.hasAttribute('required') && this.value.trim() === '') {
+        this.classList.add('error');
+      } else {
+        this.classList.remove('error');
+      }
+    });
+
+    input.addEventListener('input', function() {
+      if (this.classList.contains('error') && this.value.trim() !== '') {
+        this.classList.remove('error');
+      }
+    });
+  });
+
+  // Username format validation
+  document.getElementById('username').addEventListener('input', function() {
+    const username = this.value;
+    const isValid = /^[A-Za-z0-9_]*$/.test(username);
+
+    if (!isValid && username.length > 0) {
+      this.classList.add('error');
+    } else {
+      this.classList.remove('error');
+    }
+  });
+</script>
 {% endblock %}

@@ -2,14 +2,227 @@
 {% block title %}Edit Update – {{ app_name }}{% endblock %}
 
 {% block content %}
-<h2>Edit Your Update</h2>
-<form method="POST" action="{{ url_for('edit_update', update_id=update.id) }}">
-  <label for="message">Message:</label>
-  <textarea name="message" id="message" rows="4" required>{{ update.message }}</textarea>
+<style>
+  .edit-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: var(--space-8) var(--space-6);
+  }
 
-  <div class="button-group">
-    <button type="submit" class="button">Save</button>
-    <a href="{{ url_for('show_updates') }}" class="button">Cancel</a>
+  .edit-header {
+    text-align: center;
+    margin-bottom: var(--space-8);
+  }
+
+  .edit-title {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--gray-900);
+    margin-bottom: var(--space-2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-3);
+  }
+
+  .edit-icon {
+    width: 48px;
+    height: 48px;
+    background: linear-gradient(135deg, var(--primary-500), var(--primary-600));
+    border-radius: var(--radius-lg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1.5rem;
+  }
+
+  .edit-subtitle {
+    color: var(--gray-600);
+    font-size: 1.1rem;
+    margin: 0;
+  }
+
+  .edit-form {
+    background: white;
+    border-radius: var(--radius-xl);
+    padding: var(--space-8);
+    box-shadow: var(--shadow-lg);
+    border: 1px solid var(--gray-200);
+  }
+
+  .form-group {
+    margin-bottom: var(--space-6);
+  }
+
+  .form-label {
+    display: block;
+    font-weight: 600;
+    color: var(--gray-900);
+    margin-bottom: var(--space-2);
+    font-size: 1rem;
+  }
+
+  .form-textarea {
+    width: 100%;
+    min-height: 200px;
+    padding: var(--space-4);
+    border: 2px solid var(--gray-200);
+    border-radius: var(--radius-lg);
+    font-family: inherit;
+    font-size: 1rem;
+    line-height: 1.6;
+    color: var(--gray-900);
+    background: var(--gray-50);
+    transition: all var(--transition-normal);
+    resize: vertical;
+  }
+
+  .form-textarea:focus {
+    outline: none;
+    border-color: var(--primary-500);
+    background: white;
+    box-shadow: 0 0 0 3px var(--primary-100);
+  }
+
+  .form-actions {
+    display: flex;
+    gap: var(--space-4);
+    justify-content: center;
+    margin-top: var(--space-8);
+  }
+
+  .btn {
+    padding: var(--space-3) var(--space-6);
+    border-radius: var(--radius-lg);
+    font-weight: 600;
+    font-size: 1rem;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    transition: all var(--transition-normal);
+    cursor: pointer;
+    border: 2px solid transparent;
+  }
+
+  .btn-primary {
+    background: linear-gradient(135deg, var(--primary-500), var(--primary-600));
+    color: white;
+    border-color: var(--primary-500);
+  }
+
+  .btn-primary:hover {
+    background: linear-gradient(135deg, var(--primary-600), var(--primary-700));
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+  }
+
+  .btn-secondary {
+    background: white;
+    color: var(--gray-700);
+    border-color: var(--gray-300);
+  }
+
+  .btn-secondary:hover {
+    background: var(--gray-50);
+    border-color: var(--gray-400);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+  }
+
+  .update-info {
+    background: var(--primary-50);
+    border: 1px solid var(--primary-200);
+    border-radius: var(--radius-lg);
+    padding: var(--space-4);
+    margin-bottom: var(--space-6);
+  }
+
+  .update-info-title {
+    font-weight: 600;
+    color: var(--primary-700);
+    margin-bottom: var(--space-2);
+  }
+
+  .update-meta {
+    display: flex;
+    gap: var(--space-4);
+    font-size: 0.9rem;
+    color: var(--primary-600);
+  }
+
+  @media (max-width: 768px) {
+    .edit-container {
+      padding: var(--space-6) var(--space-4);
+    }
+
+    .edit-form {
+      padding: var(--space-6);
+    }
+
+    .form-actions {
+      flex-direction: column;
+    }
+
+    .btn {
+      justify-content: center;
+    }
+  }
+</style>
+
+<div class="edit-container">
+  <!-- Header Section -->
+  <div class="edit-header">
+    <h1 class="edit-title">
+      <div class="edit-icon">
+        <i class="fas fa-edit"></i>
+      </div>
+      Edit Update
+    </h1>
+    <p class="edit-subtitle">Make changes to your update and save when ready</p>
   </div>
-</form>
+
+  <!-- Edit Form -->
+  <div class="edit-form">
+    <!-- Update Info -->
+    <div class="update-info">
+      <div class="update-info-title">Update Information</div>
+      <div class="update-meta">
+        <span><i class="fas fa-user"></i> {{ update.name }}</span>
+        <span><i class="fas fa-calendar"></i> {{ update.timestamp.strftime('%B %d, %Y') }}</span>
+        {% if update.process %}
+          <span><i class="fas fa-tag"></i> {{ update.process }}</span>
+        {% endif %}
+      </div>
+    </div>
+
+    <form method="POST" action="{{ url_for('edit_update', update_id=update.id) }}">
+      <div class="form-group">
+        <label for="message" class="form-label">
+          <i class="fas fa-comment-alt"></i>
+          Update Message
+        </label>
+        <textarea
+          name="message"
+          id="message"
+          class="form-textarea"
+          required
+          placeholder="Enter your update message here..."
+        >{{ update.message }}</textarea>
+      </div>
+
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">
+          <i class="fas fa-save"></i>
+          Save Changes
+        </button>
+        <a href="{{ url_for('show_updates') }}" class="btn btn-secondary">
+          <i class="fas fa-times"></i>
+          Cancel
+        </a>
+      </div>
+    </form>
+  </div>
+</div>
 {% endblock %}

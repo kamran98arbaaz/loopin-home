@@ -1,0 +1,439 @@
+{% extends "base.html" %}
+
+{% block title %}Database Backup - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="container">
+  <div class="page-header">
+    <h1 class="page-title">
+      <i class="fas fa-database"></i>
+      Database Backup Management
+    </h1>
+    <p class="page-subtitle">Create, restore, and manage database backups to prevent data loss</p>
+  </div>
+
+  <!-- Backup Actions -->
+  <div class="backup-actions-card">
+    <h2>🛡️ Backup Actions</h2>
+    
+    <div class="action-grid">
+      <!-- Create Backup -->
+      <div class="action-item">
+        <div class="action-icon">
+          <i class="fas fa-plus-circle"></i>
+        </div>
+        <div class="action-content">
+          <h3>Create New Backup</h3>
+          <p>Generate a complete database backup with current data</p>
+          <form method="POST" action="{{ url_for('create_backup') }}" class="backup-form">
+            <div class="backup-form-group">
+              <select name="backup_type" class="backup-type-select">
+                <option value="manual">Manual Backup</option>
+                <option value="daily">Daily Backup</option>
+                <option value="weekly">Weekly Backup</option>
+                <option value="monthly">Monthly Backup</option>
+              </select>
+            </div>
+            <div class="backup-form-group">
+              <button type="submit" class="btn btn-primary" onclick="return confirm('Create database backup now?')">
+                <i class="fas fa-download"></i>
+                Create Backup
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Cleanup Backups -->
+      <div class="action-item">
+        <div class="action-icon">
+          <i class="fas fa-broom"></i>
+        </div>
+        <div class="action-content">
+          <h3>Cleanup Old Backups</h3>
+          <p>Remove old backups based on retention policy</p>
+          <form method="POST" action="{{ url_for('cleanup_backups') }}" class="inline-form">
+            <button type="submit" class="btn btn-secondary" onclick="return confirm('Remove old backups according to retention policy?')">
+              <i class="fas fa-trash-alt"></i>
+              Cleanup Backups
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <!-- View Archives -->
+      <div class="action-item">
+        <div class="action-icon">
+          <i class="fas fa-archive"></i>
+        </div>
+        <div class="action-content">
+          <h3>View Archived Items</h3>
+          <p>View and restore deleted updates, SOPs, and lessons</p>
+          <a href="{{ url_for('archives_page') }}" class="btn btn-info">
+            <i class="fas fa-eye"></i>
+            View Archives
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Backup List -->
+  <div class="backup-list-card">
+    <h2>📋 Available Backups</h2>
+    
+    {% if backups %}
+      <div class="backup-table-container">
+        <table class="backup-table">
+          <thead>
+            <tr>
+              <th>Backup File</th>
+              <th>Type</th>
+              <th>Size</th>
+              <th>Created</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for backup in backups %}
+            <tr>
+              <td class="backup-filename">
+                <i class="fas fa-file-archive"></i>
+                {{ backup.file.name }}
+              </td>
+              <td>
+                <span class="backup-type-badge {{ backup.metadata.backup_type }}">
+                  {{ backup.metadata.backup_type.title() }}
+                </span>
+              </td>
+              <td class="backup-size">
+                {{ "%.1f"|format(backup.metadata.file_size / (1024 * 1024)) }} MB
+              </td>
+              <td class="backup-date">
+                {{ backup.metadata.created_at | format_backup_timestamp }}
+              </td>
+              <td class="backup-actions">
+                <form method="POST" action="{{ url_for('restore_backup') }}" class="inline-form">
+                  <input type="hidden" name="backup_file" value="{{ backup.file.name }}">
+                  <button type="submit" class="btn btn-warning btn-small"
+                          onclick="return confirm('⚠️ WARNING: This will replace all current data with the backup data. Are you sure you want to restore from this backup?')">
+                    <i class="fas fa-undo"></i>
+                    Restore
+                  </button>
+                </form>
+                <form method="POST" action="{{ url_for('delete_backup') }}" class="inline-form">
+                  <input type="hidden" name="backup_file" value="{{ backup.file.name }}">
+                  <button type="submit" class="btn btn-danger btn-small"
+                          onclick="return confirm('⚠️ PERMANENTLY DELETE this backup file? This action cannot be undone!')">
+                    <i class="fas fa-trash"></i>
+                    Delete
+                  </button>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="no-backups">
+        <i class="fas fa-inbox"></i>
+        <h3>No Backups Found</h3>
+        <p>Create your first backup to protect your data from accidental loss.</p>
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- Backup Information -->
+  <div class="backup-info-card">
+    <h2>ℹ️ Backup Information</h2>
+    
+    <div class="info-grid">
+      <div class="info-item">
+        <h4>Retention Policy</h4>
+        <ul>
+          <li>Daily backups: Keep last 7 days</li>
+          <li>Weekly backups: Keep last 4 weeks</li>
+          <li>Monthly backups: Keep last 12 months</li>
+        </ul>
+      </div>
+      
+      <div class="info-item">
+        <h4>Backup Contents</h4>
+        <ul>
+          <li>All user accounts and roles</li>
+          <li>Updates and read logs</li>
+          <li>SOP summaries and lessons learned</li>
+          <li>Database schema and constraints</li>
+        </ul>
+      </div>
+      
+      <div class="info-item">
+        <h4>Safety Notes</h4>
+        <ul>
+          <li>Backups are verified before restore</li>
+          <li>Restore operations replace all data</li>
+          <li>Create a backup before restoring</li>
+          <li>Only admins can manage backups</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Navigation -->
+  <div class="backup-navigation">
+    <a href="{{ url_for('home') }}" class="btn btn-secondary">
+      <i class="fas fa-arrow-left"></i>
+      Back to Home
+    </a>
+  </div>
+</div>
+
+<style>
+  .backup-actions-card,
+  .backup-list-card,
+  .backup-info-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    padding: 2rem;
+    margin: 2rem 0;
+  }
+
+  .backup-actions-card h2,
+  .backup-list-card h2,
+  .backup-info-card h2 {
+    color: var(--gray-800);
+    margin-bottom: 1.5rem;
+    font-size: 1.5rem;
+  }
+
+  .action-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+  }
+
+  .action-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1.5rem;
+    background: var(--gray-50);
+    border-radius: 8px;
+    border-left: 4px solid var(--primary-500);
+  }
+
+  .action-icon {
+    color: var(--primary-500);
+    font-size: 2rem;
+    margin-top: 0.25rem;
+  }
+
+  .action-content h3 {
+    margin: 0 0 0.5rem 0;
+    color: var(--gray-800);
+    font-size: 1.1rem;
+  }
+
+  .action-content p {
+    margin: 0 0 1rem 0;
+    color: var(--gray-600);
+    font-size: 0.9rem;
+    line-height: 1.4;
+  }
+
+  .backup-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    align-items: flex-start;
+  }
+
+  .backup-form-group {
+    display: flex;
+    align-items: center;
+  }
+
+  .backup-type-select {
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--gray-300);
+    border-radius: 6px;
+    font-size: 0.9rem;
+    min-width: 160px;
+    background: white;
+  }
+
+  .backup-type-select:focus {
+    outline: none;
+    border-color: var(--primary-500);
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+  }
+
+  .backup-table-container {
+    overflow-x: auto;
+  }
+
+  .backup-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1rem;
+  }
+
+  .backup-table th,
+  .backup-table td {
+    padding: 1rem;
+    text-align: left;
+    border-bottom: 1px solid var(--gray-200);
+  }
+
+  .backup-table th {
+    background: var(--gray-50);
+    font-weight: 600;
+    color: var(--gray-700);
+  }
+
+  .backup-filename {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.9rem;
+  }
+
+  .backup-filename i {
+    color: var(--primary-500);
+    margin-right: 0.5rem;
+  }
+
+  .backup-type-badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    text-transform: uppercase;
+  }
+
+  .backup-type-badge.manual {
+    background: var(--gray-100);
+    color: var(--gray-700);
+  }
+
+  .backup-type-badge.daily {
+    background: var(--primary-100);
+    color: var(--primary-700);
+  }
+
+  .backup-type-badge.weekly {
+    background: var(--success-100);
+    color: var(--success-700);
+  }
+
+  .backup-type-badge.monthly {
+    background: var(--warning-100);
+    color: var(--warning-700);
+  }
+
+  .backup-size,
+  .backup-date {
+    font-size: 0.9rem;
+    color: var(--gray-600);
+  }
+
+  .no-backups {
+    text-align: center;
+    padding: 3rem;
+    color: var(--gray-500);
+  }
+
+  .no-backups i {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+  }
+
+  .info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 2rem;
+  }
+
+  .info-item h4 {
+    color: var(--gray-800);
+    margin-bottom: 0.75rem;
+    font-size: 1rem;
+  }
+
+  .info-item ul {
+    margin: 0;
+    padding-left: 1.25rem;
+    color: var(--gray-600);
+    font-size: 0.9rem;
+    line-height: 1.6;
+  }
+
+  .info-item li {
+    margin-bottom: 0.25rem;
+  }
+
+  .backup-navigation {
+    text-align: center;
+    margin-top: 2rem;
+  }
+
+  .btn-small {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.8rem;
+  }
+
+  /* Backup actions styling to prevent congestion */
+  .backup-actions {
+    min-width: 140px;
+    white-space: nowrap;
+  }
+
+  .backup-actions .inline-form {
+    display: inline-block;
+    margin: 0 2px;
+  }
+
+  .backup-actions .btn-small {
+    padding: 0.3rem 0.6rem;
+    font-size: 0.75rem;
+    margin: 1px;
+    min-width: 60px;
+  }
+
+  /* Stack buttons vertically on smaller screens */
+  @media (max-width: 1024px) {
+    .backup-actions {
+      min-width: 80px;
+    }
+
+    .backup-actions .inline-form {
+      display: block;
+      margin: 2px 0;
+    }
+
+    .backup-actions .btn-small {
+      width: 100%;
+      margin: 1px 0;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .action-grid {
+      grid-template-columns: 1fr;
+    }
+    
+    .info-grid {
+      grid-template-columns: 1fr;
+    }
+    
+    .backup-table {
+      font-size: 0.8rem;
+    }
+    
+    .backup-table th,
+    .backup-table td {
+      padding: 0.5rem;
+    }
+  }
+</style>
+{% endblock %}

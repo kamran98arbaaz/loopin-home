@@ -1,10 +1,187 @@
-<div id="guestReadModal" class="modal-overlay hidden">
-  <div class="modal-content">
-    <h3>Enter Your Name</h3>
-    <input type="text" id="guestNameInput" placeholder="Your Name" autocomplete="off" />
-    <div class="modal-actions">
-      <button id="guestMarkReadBtn" class="button">Mark as Read</button>
-      <button id="guestCloseModalBtn" class="button">Close</button>
+<div id="guestReadModal" class="guest-modal-overlay hidden">
+  <div class="guest-modal-content">
+    <div class="guest-modal-header">
+      <div class="guest-modal-icon">
+        <i class="fas fa-user-circle"></i>
+      </div>
+      <h3 class="guest-modal-title">Welcome!</h3>
+      <p class="guest-modal-subtitle">Please enter your name to continue reading</p>
+    </div>
+
+    <div class="guest-modal-body">
+      <input
+        type="text"
+        id="guestNameInput"
+        class="guest-name-input"
+        placeholder="Enter your full name"
+        autocomplete="name"
+        maxlength="100"
+      />
+    </div>
+
+    <div class="guest-modal-actions">
+      <button id="guestCloseModalBtn" class="guest-btn guest-btn-secondary">
+        <i class="fas fa-times"></i>
+        Close
+      </button>
+      <button id="guestMarkReadBtn" class="guest-btn guest-btn-primary">
+        <i class="fas fa-check"></i>
+        Mark as Read
+      </button>
     </div>
   </div>
 </div>
+
+<style>
+  /* Guest Modal Styles */
+  .guest-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 1;
+    transition: all 0.3s ease;
+  }
+
+  .guest-modal-overlay.hidden {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .guest-modal-content {
+    background: white;
+    border-radius: 16px;
+    padding: 0;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    width: 90%;
+    max-width: 420px;
+    transform: scale(1);
+    transition: all 0.3s ease;
+    overflow: hidden;
+  }
+
+  .guest-modal-overlay.hidden .guest-modal-content {
+    transform: scale(0.9);
+  }
+
+  .guest-modal-header {
+    background: linear-gradient(135deg, var(--primary-600) 0%, var(--primary-700) 100%);
+    color: white;
+    padding: 2rem 2rem 1.5rem;
+    text-align: center;
+  }
+
+  .guest-modal-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    opacity: 0.9;
+  }
+
+  .guest-modal-title {
+    margin: 0 0 0.5rem;
+    font-size: 1.5rem;
+    font-weight: 600;
+  }
+
+  .guest-modal-subtitle {
+    margin: 0;
+    font-size: 0.95rem;
+    opacity: 0.9;
+    line-height: 1.4;
+  }
+
+  .guest-modal-body {
+    padding: 2rem;
+  }
+
+  .guest-name-input {
+    width: 100%;
+    padding: 1rem;
+    border: 2px solid var(--gray-200);
+    border-radius: 12px;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    background: var(--gray-50);
+    font-family: inherit;
+  }
+
+  .guest-name-input:focus {
+    outline: none;
+    border-color: var(--primary-500);
+    background: white;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  }
+
+  .guest-modal-actions {
+    padding: 1.5rem 2rem 2rem;
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+  }
+
+  .guest-btn {
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 10px;
+    font-size: 0.95rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-family: inherit;
+  }
+
+  .guest-btn-primary {
+    background: var(--primary-600);
+    color: white;
+  }
+
+  .guest-btn-primary:hover {
+    background: var(--primary-700);
+    transform: translateY(-1px);
+  }
+
+  .guest-btn-secondary {
+    background: var(--gray-100);
+    color: var(--gray-700);
+    border: 1px solid var(--gray-300);
+  }
+
+  .guest-btn-secondary:hover {
+    background: var(--gray-200);
+  }
+
+  @media (max-width: 480px) {
+    .guest-modal-content {
+      width: 95%;
+      margin: 1rem;
+    }
+
+    .guest-modal-header {
+      padding: 1.5rem 1.5rem 1rem;
+    }
+
+    .guest-modal-body {
+      padding: 1.5rem;
+    }
+
+    .guest-modal-actions {
+      padding: 1rem 1.5rem 1.5rem;
+      flex-direction: column;
+    }
+
+    .guest-btn {
+      width: 100%;
+      justify-content: center;
+    }
+  }
+</style>

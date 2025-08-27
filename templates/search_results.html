@@ -2,176 +2,800 @@
 
 {% block title %}Search Results – {{ app_name }}{% endblock %}
 
+{% block head %}
+  <style>
+    .search-results-container {
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+
+    .search-header {
+      margin-bottom: var(--space-8);
+      text-align: center;
+    }
+
+    .search-title {
+      font-size: 2.5rem;
+      font-weight: 700;
+      color: var(--gray-900);
+      margin-bottom: var(--space-2);
+    }
+
+    .search-subtitle {
+      color: var(--gray-600);
+      font-size: 1.1rem;
+      margin-bottom: var(--space-6);
+    }
+
+    .search-form {
+      max-width: 600px;
+      margin: 0 auto var(--space-8);
+      position: relative;
+    }
+
+    .search-input {
+      width: 100%;
+      padding: var(--space-4) var(--space-5);
+      border: 2px solid var(--gray-200);
+      border-radius: var(--radius-2xl);
+      font-size: 1.1rem;
+      transition: all var(--transition-normal);
+      background: white;
+      box-shadow: var(--shadow-lg);
+      padding-right: 60px;
+    }
+
+    .search-input:focus {
+      outline: none;
+      border-color: var(--primary-500);
+      box-shadow: 0 0 0 4px var(--primary-100), var(--shadow-xl);
+      transform: translateY(-2px);
+    }
+
+    .search-button {
+      position: absolute;
+      right: var(--space-2);
+      top: 50%;
+      transform: translateY(-50%);
+      background: linear-gradient(135deg, var(--primary-600), var(--primary-700));
+      color: white;
+      border: none;
+      padding: var(--space-3);
+      border-radius: 50%;
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      width: 44px;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .search-button:hover {
+      transform: translateY(-50%) scale(1.1);
+      box-shadow: var(--shadow-lg);
+    }
+
+    .search-stats {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: var(--space-6);
+      padding: var(--space-4);
+      background: white;
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-md);
+      border: 1px solid var(--gray-200);
+    }
+
+    .results-count {
+      font-weight: 600;
+      color: var(--gray-900);
+    }
+
+    .search-time {
+      color: var(--gray-600);
+      font-size: 0.9rem;
+    }
+
+    .filters-section {
+      margin-bottom: var(--space-8);
+    }
+
+    .filters-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: var(--space-4);
+    }
+
+    .filters-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--gray-900);
+    }
+
+    .clear-filters {
+      background: var(--gray-100);
+      color: var(--gray-700);
+      border: none;
+      padding: var(--space-2) var(--space-3);
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: all var(--transition-fast);
+    }
+
+    .clear-filters:hover {
+      background: var(--gray-200);
+      transform: translateY(-1px);
+    }
+
+    .filters-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: var(--space-4);
+      margin-bottom: var(--space-6);
+    }
+
+    .filter-group {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .filter-label {
+      font-weight: 500;
+      color: var(--gray-700);
+      margin-bottom: var(--space-2);
+      font-size: 0.9rem;
+    }
+
+    .filter-select {
+      padding: var(--space-3);
+      border: 1px solid var(--gray-300);
+      border-radius: var(--radius-md);
+      font-size: 0.9rem;
+      background: white;
+      transition: all var(--transition-fast);
+    }
+
+    .filter-select:focus {
+      outline: none;
+      border-color: var(--primary-500);
+      box-shadow: 0 0 0 3px var(--primary-100);
+    }
+
+    .results-section {
+      margin-bottom: var(--space-8);
+    }
+
+    .result-item {
+      background: white;
+      border-radius: var(--radius-xl);
+      padding: var(--space-6);
+      margin-bottom: var(--space-4);
+      box-shadow: var(--shadow-lg);
+      border: 1px solid var(--gray-200);
+      transition: all var(--transition-normal);
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .result-item::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 4px;
+      height: 100%;
+      background: linear-gradient(180deg, var(--primary-500), var(--primary-600));
+      transform: scaleY(0);
+      transition: transform var(--transition-normal);
+    }
+
+    .result-item:hover {
+      transform: translateY(-4px);
+      box-shadow: var(--shadow-xl);
+    }
+
+    .result-item:hover::before {
+      transform: scaleY(1);
+    }
+
+    .result-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: var(--space-3);
+    }
+
+    .result-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--gray-900);
+      margin-bottom: var(--space-2);
+      line-height: 1.3;
+    }
+
+    .result-title a {
+      color: inherit;
+      text-decoration: none;
+      transition: color var(--transition-fast);
+    }
+
+    .result-title a:hover {
+      color: var(--primary-600);
+    }
+
+    .result-type {
+      background: var(--primary-100);
+      color: var(--primary-700);
+      padding: var(--space-1) var(--space-2);
+      border-radius: var(--radius-sm);
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      white-space: nowrap;
+    }
+
+    .result-content {
+      color: var(--gray-700);
+      line-height: 1.6;
+      margin-bottom: var(--space-4);
+    }
+
+    .result-meta {
+      display: flex;
+      align-items: center;
+      gap: var(--space-4);
+      font-size: 0.85rem;
+      color: var(--gray-500);
+      flex-wrap: wrap;
+    }
+
+    .result-author {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+    }
+
+    .result-author i {
+      color: var(--primary-500);
+    }
+
+    .result-date {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+    }
+
+    .result-date i {
+      color: var(--gray-400);
+    }
+
+    .result-process {
+      background: var(--gray-100);
+      color: var(--gray-700);
+      padding: var(--space-1) var(--space-2);
+      border-radius: var(--radius-sm);
+      font-weight: 500;
+    }
+
+    .result-tags {
+      display: flex;
+      gap: var(--space-2);
+      flex-wrap: wrap;
+      margin-top: var(--space-3);
+    }
+
+    .result-tag {
+      background: var(--gray-100);
+      color: var(--gray-600);
+      padding: var(--space-1) var(--space-2);
+      border-radius: var(--radius-sm);
+      font-size: 0.8rem;
+      font-weight: 500;
+    }
+
+    .highlight {
+      background: var(--warning-100);
+      color: var(--warning-800);
+      padding: 2px 4px;
+      border-radius: var(--radius-sm);
+      font-weight: 500;
+    }
+
+    .no-results {
+      text-align: center;
+      padding: var(--space-12);
+      color: var(--gray-500);
+    }
+
+    .no-results i {
+      font-size: 4rem;
+      color: var(--gray-300);
+      margin-bottom: var(--space-4);
+    }
+
+    .no-results h3 {
+      font-size: 1.5rem;
+      color: var(--gray-700);
+      margin-bottom: var(--space-2);
+    }
+
+    .no-results p {
+      margin-bottom: var(--space-6);
+    }
+
+    .suggestions {
+      background: var(--gray-50);
+      border-radius: var(--radius-lg);
+      padding: var(--space-6);
+      border: 1px solid var(--gray-200);
+    }
+
+    .suggestions h4 {
+      color: var(--gray-900);
+      margin-bottom: var(--space-4);
+      font-size: 1.1rem;
+    }
+
+    .suggestion-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .suggestion-list li {
+      margin-bottom: var(--space-2);
+    }
+
+    .suggestion-list a {
+      color: var(--primary-600);
+      text-decoration: none;
+      font-weight: 500;
+      transition: color var(--transition-fast);
+    }
+
+    .suggestion-list a:hover {
+      color: var(--primary-700);
+      text-decoration: underline;
+    }
+
+    .pagination {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: var(--space-2);
+      margin-top: var(--space-8);
+    }
+
+    .page-btn {
+      padding: var(--space-3) var(--space-4);
+      border: 1px solid var(--gray-300);
+      background: white;
+      color: var(--gray-700);
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-2);
+    }
+
+    .page-btn:hover {
+      border-color: var(--primary-300);
+      color: var(--primary-600);
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-md);
+    }
+
+    .page-btn.active {
+      background: var(--primary-600);
+      color: white;
+      border-color: var(--primary-600);
+    }
+
+    .page-btn:disabled {
+      background: var(--gray-100);
+      color: var(--gray-400);
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    @media (max-width: 768px) {
+      .search-title {
+        font-size: 2rem;
+      }
+
+      .search-stats {
+        flex-direction: column;
+        gap: var(--space-3);
+        text-align: center;
+      }
+
+      .filters-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .result-header {
+        flex-direction: column;
+        gap: var(--space-3);
+        align-items: flex-start;
+      }
+
+      .result-meta {
+        gap: var(--space-3);
+      }
+    }
+
+    @media (max-width: 480px) {
+      .search-title {
+        font-size: 1.75rem;
+      }
+
+      .result-item {
+        padding: var(--space-4);
+      }
+
+      .pagination {
+        flex-wrap: wrap;
+        gap: var(--space-1);
+      }
+
+      .page-btn {
+        padding: var(--space-2) var(--space-3);
+        font-size: 0.9rem;
+      }
+    }
+  </style>
+{% endblock %}
+
 {% block content %}
-<div class="search-results-root">
+<div class="search-results-container">
+  <!-- Search Header -->
   <div class="search-header">
-    <form class="search-form" method="get" action="{{ url_for('search') }}">
-      <input name="q" type="search" aria-label="Search" value="{{ query }}" placeholder="Search updates, SOPs, lessons..." />
-      <button type="submit">Search</button>
-      <a href="{{ url_for('home') }}" class="button secondary">Clear</a>
-    </form>
-    <div style="text-align:right">
-      <small class="muted">Tip: click a result to open, or expand for a quick preview</small>
+    <h1 class="search-title">Search Results</h1>
+    <p class="search-subtitle">
+      {% if query %}
+        Showing results for "{{ query }}"
+      {% else %}
+        Browse all content
+      {% endif %}
+    </p>
+  </div>
+
+  <!-- Search Form -->
+  <form class="search-form" method="GET" action="{{ url_for('search') }}">
+    <input 
+      type="text" 
+      name="q" 
+      value="{{ query or '' }}" 
+      placeholder="Search updates, SOPs, lessons learned..." 
+      class="search-input"
+      autocomplete="off"
+    >
+    <button type="submit" class="search-button" aria-label="Search">
+      <i class="fas fa-search"></i>
+    </button>
+  </form>
+
+  <!-- Search Stats -->
+  {% if results %}
+    <div class="search-stats">
+      <div class="results-count">
+        {{ results|length }} result{{ 's' if results|length != 1 else '' }} found
+      </div>
+      <div class="search-time">
+        Search completed in {{ search_time if search_time else '0.01' }} seconds
+      </div>
     </div>
-  </div>
 
-  <div class="results-meta">
-    <h2>Search Results for "<span class="query-text">{{ query }}</span>"</h2>
-    <p class="muted">Found <strong>Updates {{ results.updates|length if results.updates else 0 }}</strong> <strong>SOPs {{ results.sops|length if results.sops else 0 }}</strong> <strong>Lessons {{ results.lessons|length if results.lessons else 0 }}</strong></p>
-  </div>
+    <!-- Filters Section -->
+    <div class="filters-section">
+      <div class="filters-header">
+        <h3 class="filters-title">Filters</h3>
+        <button class="clear-filters" onclick="clearFilters()">Clear All</button>
+      </div>
+      
+      <div class="filters-grid">
+        <div class="filter-group">
+          <label class="filter-label">Category</label>
+          <select class="filter-select" name="category" onchange="applyFilter('category', this.value)">
+            <option value="">All Categories</option>
+            <option value="updates" {{ 'selected' if filters.category == 'updates' }}>Updates</option>
+            <option value="sops" {{ 'selected' if filters.category == 'sops' }}>SOPs</option>
+            <option value="lessons" {{ 'selected' if filters.category == 'lessons' }}>Lessons Learned</option>
+          </select>
+        </div>
 
-  <div class="tabs" role="tablist" aria-label="Search result categories">
-    <button class="tab-btn active" data-target="updates" role="tab" aria-selected="true">Updates&nbsp;<span class="badge">{{ results.updates|length if results.updates else 0 }}</span></button>
-    <button class="tab-btn" data-target="sops" role="tab" aria-selected="false">SOPs&nbsp;<span class="badge">{{ results.sops|length if results.sops else 0 }}</span></button>
-    <button class="tab-btn" data-target="lessons" role="tab" aria-selected="false">Lessons&nbsp;<span class="badge">{{ results.lessons|length if results.lessons else 0 }}</span></button>
-  </div>
+        <div class="filter-group">
+          <label class="filter-label">Process</label>
+          <select class="filter-select" name="process" onchange="applyFilter('process', this.value)">
+            <option value="">All Processes</option>
+            {% for process in available_processes %}
+              <option value="{{ process }}" {{ 'selected' if filters.process == process }}>{{ process }}</option>
+            {% endfor %}
+          </select>
+        </div>
 
-  <div class="results-container">
-    <div id="updates" class="result-pane active" role="tabpanel">
-      {% if results.updates %}
-        {% for upd in results.updates %}
-          <article class="result-card">
-            <div>
-              <a href="{{ upd.url }}" class="link title">{{ upd.title }}</a>
-              <div class="meta">
-                <small>{{ upd.timestamp.strftime('%d/%m/%Y %H:%M') if upd.timestamp else '' }}</small>
-                {% if upd.author %}<small>&middot; {{ upd.author }}</small>{% endif %}
+        <div class="filter-group">
+          <label class="filter-label">Department</label>
+          <select class="filter-select" name="department" onchange="applyFilter('department', this.value)">
+            <option value="">All Departments</option>
+            {% for dept in available_departments %}
+              <option value="{{ dept }}" {{ 'selected' if filters.department == dept }}>{{ dept }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label class="filter-label">Date Range</label>
+          <select class="filter-select" name="date_range" onchange="applyFilter('date_range', this.value)">
+            <option value="">All Time</option>
+            <option value="today" {{ 'selected' if filters.date_range == 'today' }}>Today</option>
+            <option value="week" {{ 'selected' if filters.date_range == 'week' }}>This Week</option>
+            <option value="month" {{ 'selected' if filters.date_range == 'month' }}>This Month</option>
+            <option value="quarter" {{ 'selected' if filters.date_range == 'quarter' }}>This Quarter</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Results Section -->
+    <div class="results-section">
+      {% for result in results %}
+        <div class="result-item">
+          <div class="result-header">
+            <h3 class="result-title">
+              <a href="{{ result.url }}">
+                {% if result.title %}
+                  {{ result.title|safe }}
+                {% else %}
+                  {{ result.content[:100]|safe }}...
+                {% endif %}
+              </a>
+            </h3>
+            <span class="result-type">{{ result.type|upper }}</span>
+          </div>
+
+          <div class="result-content">
+            {% if result.content %}
+              {{ result.content|safe }}
+            {% else %}
+              {{ result.description or 'No description available' }}
+            {% endif %}
+          </div>
+
+          <div class="result-meta">
+            {% if result.author %}
+              <div class="result-author">
+                <i class="fas fa-user"></i>
+                <span>{{ result.author }}</span>
               </div>
-            </div>
+            {% endif %}
 
-            <div class="excerpt" data-full="{{ (upd.content|e) if upd.content else '' }}">
-              {% if upd.content %}{{ upd.content[:300] }}{% endif %}
-              {% if upd.content and upd.content|length > 300 %}...{% endif %}
-            </div>
+            {% if result.created_at %}
+              <div class="result-date">
+                <i class="fas fa-calendar"></i>
+                <span>{{ result.created_at.strftime('%B %d, %Y') }}</span>
+              </div>
+            {% endif %}
 
-            <div class="controls">
-              <a href="{{ upd.url }}" class="open-btn" aria-label="Open result"><i class="fas fa-external-link-alt" aria-hidden="true"></i></a>
+            {% if result.process %}
+              <div class="result-process">
+                <i class="fas fa-cogs"></i>
+                <span>{{ result.process }}</span>
+              </div>
+            {% endif %}
+          </div>
+
+          {% if result.tags %}
+            <div class="result-tags">
+              {% for tag in result.tags[:5] %}
+                <span class="result-tag">{{ tag }}</span>
+              {% endfor %}
+              {% if result.tags|length > 5 %}
+                <span class="result-tag">+{{ result.tags|length - 5 }} more</span>
+              {% endif %}
             </div>
-          </article>
-        {% endfor %}
-      {% else %}
-        <p>No updates matched.</p>
-      {% endif %}
+          {% endif %}
+        </div>
+      {% endfor %}
     </div>
 
-    <div id="sops" class="result-pane" role="tabpanel">
-      {% if results.sops %}
-        {% for sop in results.sops %}
-          <article class="result-card">
-            <div>
-              <a href="{{ sop.url }}" class="link title">{{ sop.title }}</a>
-              <div class="meta"><small>{{ sop.department if sop.department else '' }}</small></div>
-            </div>
+    <!-- Pagination -->
+    {% if pagination and pagination.pages > 1 %}
+      <div class="pagination">
+        {% if pagination.has_prev %}
+          <a href="{{ url_for('search', q=query, page=pagination.prev_num, **filters) }}" class="page-btn">
+            <i class="fas fa-chevron-left"></i>
+            Previous
+          </a>
+        {% else %}
+          <span class="page-btn" disabled>
+            <i class="fas fa-chevron-left"></i>
+            Previous
+          </span>
+        {% endif %}
 
-            <div class="excerpt" data-full="{{ (sop.summary|e) if sop.summary else '' }}">
-              {% if sop.summary %}{{ sop.summary[:300] }}{% endif %}{% if sop.summary and sop.summary|length > 300 %}...{% endif %}
-            </div>
-
-            <div class="controls">
-              <a href="{{ sop.url }}" class="open-btn" aria-label="Open SOP"><i class="fas fa-external-link-alt" aria-hidden="true"></i></a>
-            </div>
-          </article>
+        {% for page_num in pagination.iter_pages() %}
+          {% if page_num %}
+            {% if page_num != pagination.page %}
+              <a href="{{ url_for('search', q=query, page=page_num, **filters) }}" class="page-btn">
+                {{ page_num }}
+              </a>
+            {% else %}
+              <span class="page-btn active">{{ page_num }}</span>
+            {% endif %}
+          {% else %}
+            <span class="page-btn">...</span>
+          {% endif %}
         {% endfor %}
-      {% else %}
-        <p>No SOP summaries matched.</p>
+
+        {% if pagination.has_next %}
+          <a href="{{ url_for('search', q=query, page=pagination.next_num, **filters) }}" class="page-btn">
+            Next
+            <i class="fas fa-chevron-right"></i>
+          </a>
+        {% else %}
+          <span class="page-btn" disabled>
+            Next
+            <i class="fas fa-chevron-right"></i>
+          </span>
+        {% endif %}
+      </div>
+    {% endif %}
+
+  {% else %}
+    <!-- No Results -->
+    <div class="no-results">
+      <i class="fas fa-search"></i>
+      <h3>No results found</h3>
+      <p>
+        {% if query %}
+          We couldn't find any results for "{{ query }}". 
+          Try adjusting your search terms or filters.
+        {% else %}
+          No content available. Try adding some updates, SOPs, or lessons learned.
+        {% endif %}
+      </p>
+
+      {% if suggestions %}
+        <div class="suggestions">
+          <h4>Try searching for:</h4>
+          <ul class="suggestion-list">
+            {% for suggestion in suggestions %}
+              <li>
+                <a href="{{ url_for('search', q=suggestion) }}">{{ suggestion }}</a>
+              </li>
+            {% endfor %}
+          </ul>
+        </div>
       {% endif %}
     </div>
-
-    <div id="lessons" class="result-pane" role="tabpanel">
-      {% if results.lessons %}
-        {% for lesson in results.lessons %}
-          <article class="result-card">
-            <div>
-              <a href="{{ lesson.url }}" class="link title">{{ lesson.title }}</a>
-              <div class="meta"><small>{{ lesson.category if lesson.category else '' }}</small></div>
-            </div>
-
-            <div class="excerpt" data-full="{{ (lesson.content|e) if lesson.content else '' }}">
-              {% if lesson.content %}{{ lesson.content[:300] }}{% endif %}{% if lesson.content and lesson.content|length > 300 %}...{% endif %}
-            </div>
-
-            <div class="controls">
-              <a href="{{ lesson.url }}" class="open-btn" aria-label="Open lesson"><i class="fas fa-external-link-alt" aria-hidden="true"></i></a>
-            </div>
-          </article>
-        {% endfor %}
-      {% else %}
-        <p>No lessons matched.</p>
-      {% endif %}
-    </div>
-  </div>
-
-  <script>
-    (function(){
-      // Tab switching
-      const tabs = document.querySelectorAll('.tab-btn');
-      tabs.forEach(btn => btn.addEventListener('click', (e) => {
-        tabs.forEach(b => { b.classList.remove('active'); b.setAttribute('aria-selected','false'); });
-        e.currentTarget.classList.add('active');
-        e.currentTarget.setAttribute('aria-selected','true');
-        const target = e.currentTarget.getAttribute('data-target');
-        document.querySelectorAll('.result-pane').forEach(p => p.classList.remove('active'));
-        const pane = document.getElementById(target);
-        if (pane) pane.classList.add('active');
-      }));
-
-      // card click toggles preview to reduce button clutter
-      function unescapeHtml(escaped){
-        const div = document.createElement('div'); div.innerHTML = escaped; return div.textContent || div.innerText || '';
-      }
-
-      function toggleCard(card){
-        const excerptEl = card.querySelector('.excerpt');
-        const full = excerptEl.getAttribute('data-full') || '';
-        if (!card.classList.contains('expanded')) {
-          excerptEl.textContent = unescapeHtml(full);
-          card.classList.add('expanded');
-        } else {
-          const text = unescapeHtml(full);
-          excerptEl.textContent = text.length > 300 ? text.slice(0,300) + '...' : text;
-          card.classList.remove('expanded');
-        }
-        highlightQueryIn(card);
-      }
-
-      document.querySelectorAll('.result-card').forEach(card => {
-        card.addEventListener('click', (e) => {
-          // Ignore clicks on links/buttons inside the card (they have their own action)
-          if (e.target.closest('a') || e.target.closest('button')) return;
-          toggleCard(card);
-        });
-      });
-
-      // Highlight query terms in results (unchanged)
-      function highlightQueryIn(root){
-        const q = (document.querySelector('.query-text')||{}).textContent || '';
-        if (!q) return;
-        const terms = q.trim().split(/\s+/).filter(Boolean).map(t => t.replace(/[.*+?^${}()|[\\]\\]/g,'\\$&'));
-        if (!terms.length) return;
-        const regex = new RegExp('(' + terms.join('|') + ')', 'gi');
-
-        root.querySelectorAll('.title, .excerpt').forEach(el => {
-          const text = el.textContent || '';
-          const highlighted = text.replace(regex, '<mark class="search-hit">$1</mark>');
-          el.innerHTML = highlighted;
-        });
-      }
-
-      // Initial highlight for visible pane
-      document.addEventListener('DOMContentLoaded', () => {
-        document.querySelectorAll('.result-pane.active .result-card').forEach(card => highlightQueryIn(card));
-      });
-
-      // Also highlight after any tab switch
-      tabs.forEach(b => b.addEventListener('click', () => {
-        setTimeout(() => {
-          document.querySelectorAll('.result-pane.active .result-card').forEach(card => highlightQueryIn(card));
-        }, 50);
-      }));
-
-    })();
-  </script>
-
-  <a href="{{ url_for('home') }}" class="button" style="margin-top:1rem; display:inline-block;">&larr; Back to Home</a>
+  {% endif %}
 </div>
+
+<script>
+  // Filter functionality
+  function applyFilter(filterType, value) {
+    const urlParams = new URLSearchParams(window.location.search);
+    
+    if (value) {
+      urlParams.set(filterType, value);
+    } else {
+      urlParams.delete(filterType);
+    }
+    
+    // Reset to first page when filtering
+    urlParams.delete('page');
+    
+    window.location.search = urlParams.toString();
+  }
+
+  function clearFilters() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const query = urlParams.get('q');
+    
+    // Keep only the search query
+    window.location.search = query ? `q=${encodeURIComponent(query)}` : '';
+  }
+
+  // Highlight search terms in results
+  function highlightSearchTerms() {
+    const query = '{{ query }}';
+    if (!query) return;
+
+    const searchTerms = query.split(' ').filter(term => term.length > 2);
+    const resultItems = document.querySelectorAll('.result-title, .result-content');
+
+    resultItems.forEach(item => {
+      let html = item.innerHTML;
+      searchTerms.forEach(term => {
+        const regex = new RegExp(`(${term})`, 'gi');
+        html = html.replace(regex, '<mark class="highlight">$1</mark>');
+      });
+      item.innerHTML = html;
+    });
+  }
+
+  // Initialize highlighting when page loads
+  document.addEventListener('DOMContentLoaded', highlightSearchTerms);
+
+  // Add click effects to result items
+  document.querySelectorAll('.result-item').forEach(item => {
+    item.addEventListener('click', function(e) {
+      // Prevent default if we're handling the click
+      const link = this.querySelector('a');
+      const resultType = this.querySelector('.result-type');
+
+      if (link && resultType) {
+        const type = resultType.textContent.toLowerCase();
+
+        // Special handling for different result types
+        if (type === 'update') {
+          e.preventDefault();
+
+          // Extract update ID from the URL
+          const url = link.href;
+          const updateIdMatch = url.match(/\/view\/(.+)$/);
+
+          if (updateIdMatch) {
+            const updateId = updateIdMatch[1];
+            // Redirect to Show Updates page with highlight parameter
+            window.location.href = `/updates?highlight_update=${updateId}`;
+          } else {
+            // Fallback to original URL
+            window.location.href = url;
+          }
+        } else if (type === 'sop') {
+          e.preventDefault();
+
+          // For SOP results, ensure proper redirect after login
+          const url = link.href;
+          const sopIdMatch = url.match(/\/sop_summaries\/(.+)$/);
+
+          if (sopIdMatch) {
+            // Add next parameter to ensure redirect to SOPs list after login
+            window.location.href = url + '?from_search=true';
+          } else {
+            window.location.href = url;
+          }
+        } else if (type === 'lesson') {
+          e.preventDefault();
+
+          // For Lesson results, ensure proper redirect after login
+          const url = link.href;
+          const lessonIdMatch = url.match(/\/lessons_learned\/(.+)$/);
+
+          if (lessonIdMatch) {
+            // Add next parameter to ensure redirect to Lessons list after login
+            window.location.href = url + '?from_search=true';
+          } else {
+            window.location.href = url;
+          }
+        } else {
+          // For other results, use original behavior
+          window.location.href = link.href;
+        }
+      }
+    });
+  });
+
+  // Add hover effects to pagination
+  document.querySelectorAll('.page-btn:not([disabled])').forEach(btn => {
+    btn.addEventListener('mouseenter', function() {
+      this.style.transform = 'translateY(-2px)';
+    });
+    
+    btn.addEventListener('mouseleave', function() {
+      this.style.transform = 'translateY(0)';
+    });
+  });
+</script>
 {% endblock %}

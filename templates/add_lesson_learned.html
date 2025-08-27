@@ -2,28 +2,302 @@
 
 {% block title %}Add Lesson Learned - {{ app_name }}{% endblock %}
 
+{% block head %}
+  <style>
+    .form-container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    .page-header {
+      margin-bottom: var(--space-8);
+      text-align: center;
+    }
+
+    .page-title {
+      font-size: 2.5rem;
+      font-weight: 700;
+      color: var(--gray-900);
+      margin-bottom: var(--space-2);
+    }
+
+    .page-subtitle {
+      color: var(--gray-600);
+      font-size: 1.1rem;
+      margin-bottom: var(--space-6);
+    }
+
+    .form-card {
+      background: white;
+      border-radius: var(--radius-2xl);
+      padding: var(--space-8);
+      box-shadow: var(--shadow-xl);
+      border: 1px solid var(--gray-200);
+    }
+
+    .form-section {
+      margin-bottom: var(--space-8);
+    }
+
+    .form-section:last-child {
+      margin-bottom: 0;
+    }
+
+    .section-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--gray-900);
+      margin-bottom: var(--space-4);
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+    }
+
+    .section-title i {
+      color: var(--primary-500);
+      font-size: 1.1rem;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--space-4);
+      margin-bottom: var(--space-6);
+    }
+
+    .form-group {
+      margin-bottom: var(--space-6);
+    }
+
+    .form-group.full-width {
+      grid-column: 1 / -1;
+    }
+
+    .form-label {
+      display: block;
+      margin-bottom: var(--space-2);
+      font-weight: 500;
+      color: var(--gray-700);
+      font-size: 0.9rem;
+    }
+
+    .form-label.required::after {
+      content: ' *';
+      color: var(--error-500);
+    }
+
+    .form-input {
+      width: 100%;
+      padding: var(--space-4);
+      border: 2px solid var(--gray-200);
+      border-radius: var(--radius-lg);
+      font-size: 1rem;
+      transition: all var(--transition-normal);
+      background: white;
+      box-shadow: var(--shadow-sm);
+      font-family: inherit;
+    }
+
+    .form-input:focus {
+      outline: none;
+      border-color: var(--primary-500);
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+
+    .form-textarea {
+      resize: vertical;
+      min-height: 120px;
+    }
+
+    .help-text {
+      margin-top: var(--space-2);
+      font-size: 0.875rem;
+      color: var(--gray-500);
+      line-height: 1.4;
+    }
+
+    .form-actions {
+      display: flex;
+      gap: var(--space-3);
+      justify-content: flex-end;
+      margin-top: var(--space-8);
+      padding-top: var(--space-6);
+      border-top: 1px solid var(--gray-200);
+    }
+
+    .btn {
+      padding: var(--space-3) var(--space-6);
+      border-radius: var(--radius-lg);
+      font-weight: 500;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-2);
+      transition: all var(--transition-fast);
+      border: none;
+      cursor: pointer;
+      font-size: 1rem;
+    }
+
+    .btn-primary {
+      background: var(--primary-600);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: var(--primary-700);
+      transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+      background: var(--gray-100);
+      color: var(--gray-700);
+      border: 1px solid var(--gray-300);
+    }
+
+    .btn-secondary:hover {
+      background: var(--gray-200);
+    }
+
+    @media (max-width: 768px) {
+      .form-row {
+        grid-template-columns: 1fr;
+      }
+
+      .form-actions {
+        flex-direction: column;
+      }
+    }
+  </style>
+{% endblock %}
+
 {% block content %}
-<h2>Add New Lesson Learned</h2>
+<div class="form-container">
+  <!-- Page Header -->
+  <div class="page-header">
+    <h1 class="page-title">Document Lesson Learned</h1>
+    <p class="page-subtitle">Share valuable insights and experiences with your team</p>
+  </div>
 
-<form method="POST" action="{{ url_for('add_lesson_learned') }}">
-  <label for="title">Title<span style="color:red">*</span>:</label><br/>
-  <input type="text" id="title" name="title" required maxlength="255" /><br/><br/>
+  <!-- Form -->
+  <form class="form-card" method="POST" action="{{ url_for('add_lesson_learned') }}">
+    <!-- Core Content Section -->
+    <div class="form-section">
+      <h2 class="section-title">
+        <i class="fas fa-graduation-cap"></i>
+        Core Content
+      </h2>
 
-  <label for="content">Content<span style="color:red">*</span>:</label><br/>
-  <textarea id="content" name="content" rows="8" required></textarea><br/><br/>
+      <div class="form-group">
+        <label for="title" class="form-label required">Lesson Title</label>
+        <input
+          type="text"
+          id="title"
+          name="title"
+          class="form-input"
+          placeholder="Enter a clear, descriptive title for the lesson"
+          required
+          maxlength="255"
+        >
+        <div class="help-text">
+          Choose a title that clearly identifies the key learning or insight.
+        </div>
+      </div>
 
-  <label for="summary">Summary (optional):</label><br/>
-  <textarea id="summary" name="summary" rows="4"></textarea><br/><br/>
+      <div class="form-group">
+        <label for="content" class="form-label required">Detailed Content</label>
+        <textarea
+          id="content"
+          name="content"
+          class="form-input form-textarea"
+          placeholder="Describe the lesson learned in detail. Include context, what happened, what was learned, and how it can be applied..."
+          required
+          rows="8"
+        ></textarea>
+        <div class="help-text">
+          Provide comprehensive details about the situation, what was learned, and actionable insights.
+        </div>
+      </div>
 
-  <label for="author">Author:</label><br/>
-  <input type="text" id="author" name="author" maxlength="100" /><br/><br/>
+      <div class="form-group">
+        <label for="summary" class="form-label">Quick Summary</label>
+        <textarea
+          id="summary"
+          name="summary"
+          class="form-input form-textarea"
+          placeholder="Optional: Provide a brief summary of the key takeaway..."
+          rows="4"
+        ></textarea>
+        <div class="help-text">
+          A concise summary that captures the essence of the lesson for quick reference.
+        </div>
+      </div>
+    </div>
 
-  <label for="department">Department:</label><br/>
-  <input type="text" id="department" name="department" maxlength="100" /><br/><br/>
+    <!-- Additional Details Section -->
+    <div class="form-section">
+      <h2 class="section-title">
+        <i class="fas fa-info-circle"></i>
+        Additional Details
+      </h2>
 
-  <label for="tags">Tags (comma separated):</label><br/>
-  <input type="text" id="tags" name="tags" placeholder="e.g. project, quality, improvement" /><br/><br/>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="author" class="form-label">Author</label>
+          <input
+            type="text"
+            id="author"
+            name="author"
+            class="form-input"
+            placeholder="Your name"
+            maxlength="100"
+          >
+          <div class="help-text">
+            Who documented this lesson learned?
+          </div>
+        </div>
 
-  <button type="submit">Add Lesson Learned</button>
-</form>
+        <div class="form-group">
+          <label for="department" class="form-label">Department</label>
+          <select id="department" name="department" class="form-input">
+            <option value="">Select department</option>
+            <option value="ABC">ABC</option>
+            <option value="XYZ">XYZ</option>
+            <option value="AB">AB</option>
+          </select>
+          <div class="help-text">
+            Which department does this lesson apply to?
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="tags" class="form-label">Tags</label>
+        <input
+          type="text"
+          id="tags"
+          name="tags"
+          class="form-input"
+          placeholder="project, quality, improvement, process"
+        >
+        <div class="help-text">
+          Add comma-separated tags to help categorize and find this lesson.
+        </div>
+      </div>
+    </div>
+
+    <!-- Form Actions -->
+    <div class="form-actions">
+      <a href="{{ url_for('list_lessons_learned') }}" class="btn btn-secondary">
+        <i class="fas fa-times"></i>
+        Cancel
+      </a>
+
+      <button type="submit" class="btn btn-primary">
+        <i class="fas fa-save"></i>
+        Save Lesson Learned
+      </button>
+    </div>
+  </form>
+</div>
 {% endblock %}

@@ -3,6 +3,8 @@ from datetime import datetime, timedelta
 import pytz
 
 from models import Update
+from extensions import db
+from timezone_utils import UTC, now_utc, ensure_timezone, is_within_hours
 
 import os
 try:
@@ -16,6 +18,7 @@ def get_redis_client():
     """Return a redis client if REDIS_URL configured, or None.
 
     Caches the client so repeated calls are cheap.
+    Uses short timeouts to prevent performance issues.
     """
     global _cached_redis
     # If tests or other code injected a redis_client, prefer it
@@ -34,7 +37,14 @@ def get_redis_client():
         _cached_redis = None
         return None
     try:
-        _cached_redis = _redis.from_url(url, decode_responses=True)
+        # Use short timeouts to prevent blocking
+        _cached_redis = _redis.from_url(
+            url,
+            decode_responses=True,
+            socket_timeout=1.0,  # 1 second timeout
+            socket_connect_timeout=1.0,  # 1 second connection timeout
+            health_check_interval=30  # Check health every 30 seconds
+        )
     except Exception:
         _cached_redis = None
     return _cached_redis
@@ -57,28 +67,30 @@ def is_redis_healthy():
     """Quick probe to check if Redis is reachable.
 
     Returns True if a ping succeeds, otherwise False.
+    Uses a very short timeout to avoid performance issues.
     """
     r = get_redis_client()
     if not r:
         return False
     try:
-        return r.ping()
+        # Set a very short timeout to avoid blocking
+        r.ping()
+        return True
     except Exception:
         return False
 
 bp = Blueprint("api", __name__, url_prefix="/api")
 
 
-def _serialize_update(upd, now_utc):
+def _serialize_update(upd, current_time):
     ts = upd.timestamp
     if ts is None:
         ts_iso = None
         is_new = False
     else:
-        if ts.tzinfo is None:
-            ts = ts.replace(tzinfo=pytz.UTC)
+        ts = ensure_timezone(ts, UTC)
         ts_iso = ts.isoformat()
-        is_new = (now_utc - ts) <= timedelta(hours=24)
+        is_new = is_within_hours(ts, 24, current_time)
 
     return {
         "id": upd.id,
@@ -130,8 +142,8 @@ def get_updates():
         }
         return jsonify({"items": [], "meta": meta})
 
-    now_utc = datetime.now(pytz.UTC)
-    items = [_serialize_update(u, now_utc) for u in rows]
+    current_time = now_utc()
+    items = [_serialize_update(u, current_time) for u in rows]
 
     # Build minimal pagination links
     def _link(p):
@@ -289,7 +301,7 @@ def post_update():
     def _redis_allowed(rclient, key, window, limit):
         # Prefer to use a sliding-window Lua script for more accurate limits.
         # If that fails, fall back to fixed-window INCR+EXPIRE.
-        now_ts = int(datetime.now(pytz.UTC).timestamp())
+        now_ts = int(now_utc().timestamp())
         rk = f"rate:api_post:{key}"
         member = f"{now_ts}:{os.getpid()}:{int(now_ts * 1e6)}"
 
@@ -386,12 +398,121 @@ def post_update():
         import uuid
         id_val = uuid.uuid4().hex
 
-    u = Update(id=id_val, name=name, process=process, message=message, timestamp=datetime.now(pytz.UTC))
+    u = Update(id=id_val, name=name, process=process, message=message, timestamp=now_utc())
     try:
         db.session.add(u)
         db.session.commit()
+        
+        # Broadcast the new update via Socket.IO
+        try:
+            from api.socketio import broadcast_update
+            update_data = u.to_dict()
+            broadcast_update(update_data, process)
+        except Exception as e:
+            # Socket.IO broadcasting failure shouldn't break the API
+            print(f"Socket.IO broadcast failed: {e}")
+            
     except Exception:
         db.session.rollback()
         return jsonify({"error": "db_error"}), 500
 
     return jsonify({"id": u.id}), 201
+
+
+@bp.route("/updates/<update_id>", methods=["DELETE"])
+def delete_update_api(update_id):
+    """Delete an update via API. Requires authentication."""
+    from flask import session
+    from flask_login import current_user
+
+    # Check if user is authenticated
+    if not session.get("user_id") and not (hasattr(current_user, 'is_authenticated') and current_user.is_authenticated):
+        return jsonify({"error": "Authentication required"}), 401
+
+    try:
+        # Get the update
+        update = Update.query.get(update_id)
+        if not update:
+            return jsonify({"error": "Update not found"}), 404
+
+        # Check if user owns the update or is admin
+        user_id = session.get("user_id")
+        if user_id:
+            from models import User
+            user = User.query.get(user_id)
+            if not user:
+                return jsonify({"error": "User not found"}), 401
+
+            # Check ownership or admin role
+            if update.name.strip().lower() != user.display_name.strip().lower() and user.role != 'admin':
+                return jsonify({"error": "Not authorized to delete this update"}), 403
+        elif hasattr(current_user, 'display_name'):
+            # Flask-Login user
+            if update.name.strip().lower() != current_user.display_name.strip().lower() and getattr(current_user, 'role', None) != 'admin':
+                return jsonify({"error": "Not authorized to delete this update"}), 403
+        else:
+            return jsonify({"error": "Authentication required"}), 401
+
+        # Capture details before deletion
+        entity_title = f"Update: {update.message[:50]}..."
+
+        # Capture user info before deletion (while session is still available)
+        current_user_id = session.get("user_id")
+
+        # Get client IP address
+        client_ip = request.environ.get('HTTP_X_FORWARDED_FOR', request.environ.get('REMOTE_ADDR', 'Unknown'))
+        if ',' in client_ip:
+            client_ip = client_ip.split(',')[0].strip()
+
+        # Get user agent
+        user_agent = request.headers.get('User-Agent', 'Unknown')
+
+        # Archive the update before deletion
+        from models import ArchivedUpdate
+        import pytz
+        from datetime import datetime
+
+        archived_update = ArchivedUpdate(
+            id=update.id,
+            name=update.name,
+            process=update.process,
+            message=update.message,
+            timestamp=update.timestamp,
+            archived_at=now_utc(),
+            archived_by=current_user_id
+        )
+        db.session.add(archived_update)
+
+        # Delete the update
+        db.session.delete(update)
+        db.session.commit()
+
+        # Log activity after successful deletion
+        try:
+            from models import ActivityLog
+            import pytz
+            from datetime import datetime
+
+            activity = ActivityLog(
+                user_id=current_user_id,
+                action='deleted',
+                entity_type='update',
+                entity_id=str(update_id),
+                entity_title=entity_title,
+                timestamp=now_utc(),
+                ip_address=client_ip,
+                user_agent=user_agent,
+                details='Deleted via API'
+            )
+
+            db.session.add(activity)
+            db.session.commit()
+        except Exception as e:
+            # Don't let activity logging break the API response
+            print(f"Activity logging failed in API: {e}")
+
+        return jsonify({"success": True, "message": "Update deleted successfully"}), 200
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": f"Failed to delete update: {str(e)}"}), 500

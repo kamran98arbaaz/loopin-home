@@ -1,0 +1,329 @@
+{% extends "base.html" %}
+
+{% block title %}Archived Items - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="container">
+  <div class="page-header">
+    <h1 class="page-title">
+      <i class="fas fa-archive"></i>
+      Archived Items Management
+    </h1>
+    <p class="page-subtitle">View and restore deleted updates, SOPs, and lessons learned</p>
+  </div>
+
+  <!-- Archived Updates -->
+  <div class="archive-section">
+    <h2>🔄 Archived Updates ({{ archived_updates|length }})</h2>
+    
+    {% if archived_updates %}
+      <div class="archive-table-container">
+        <table class="archive-table">
+          <thead>
+            <tr>
+              <th>Update ID</th>
+              <th>Author</th>
+              <th>Process</th>
+              <th>Message</th>
+              <th>Original Date</th>
+              <th>Archived Date</th>
+              <th>Archived By</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item, archived_by_name in archived_updates %}
+            <tr>
+              <td class="archive-id">{{ item.id[:8] }}...</td>
+              <td class="archive-author">{{ item.name }}</td>
+              <td class="archive-process">{{ item.process }}</td>
+              <td class="archive-message">{{ item.message[:100] }}{% if item.message|length > 100 %}...{% endif %}</td>
+              <td class="archive-date">{{ item.timestamp | to_ist }}</td>
+              <td class="archive-date">{{ item.archived_at | to_ist }}</td>
+              <td class="archive-user">{{ archived_by_name or 'System' }}</td>
+              <td class="archive-actions">
+                <form method="POST" action="{{ url_for('restore_archived_item', item_type='update', item_id=item.id) }}" class="inline-form">
+                  <button type="submit" class="btn btn-success btn-small"
+                          onclick="return confirm('Restore this update? It will be visible to all users again.')">
+                    <i class="fas fa-undo"></i>
+                    Restore
+                  </button>
+                </form>
+                <form method="POST" action="{{ url_for('delete_archived_item', item_type='update', item_id=item.id) }}" class="inline-form">
+                  <button type="submit" class="btn btn-danger btn-small"
+                          onclick="return confirm('⚠️ PERMANENTLY DELETE this archived update? This action cannot be undone!')">
+                    <i class="fas fa-trash"></i>
+                    Delete
+                  </button>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="no-archives">
+        <i class="fas fa-inbox"></i>
+        <p>No archived updates found.</p>
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- Archived SOPs -->
+  <div class="archive-section">
+    <h2>📋 Archived SOPs ({{ archived_sops|length }})</h2>
+    
+    {% if archived_sops %}
+      <div class="archive-table-container">
+        <table class="archive-table">
+          <thead>
+            <tr>
+              <th>Title</th>
+              <th>Department</th>
+              <th>Summary</th>
+              <th>Original Date</th>
+              <th>Archived Date</th>
+              <th>Archived By</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item, archived_by_name in archived_sops %}
+            <tr>
+              <td class="archive-title">{{ item.title }}</td>
+              <td class="archive-department">{{ item.department or 'N/A' }}</td>
+              <td class="archive-summary">{{ item.summary_text[:100] }}{% if item.summary_text|length > 100 %}...{% endif %}</td>
+              <td class="archive-date">{{ item.created_at | to_ist }}</td>
+              <td class="archive-date">{{ item.archived_at | to_ist }}</td>
+              <td class="archive-user">{{ archived_by_name or 'System' }}</td>
+              <td class="archive-actions">
+                <form method="POST" action="{{ url_for('restore_archived_item', item_type='sop', item_id=item.id) }}" class="inline-form">
+                  <button type="submit" class="btn btn-success btn-small"
+                          onclick="return confirm('Restore this SOP? It will be visible to all users again.')">
+                    <i class="fas fa-undo"></i>
+                    Restore
+                  </button>
+                </form>
+                <form method="POST" action="{{ url_for('delete_archived_item', item_type='sop', item_id=item.id) }}" class="inline-form">
+                  <button type="submit" class="btn btn-danger btn-small"
+                          onclick="return confirm('⚠️ PERMANENTLY DELETE this archived SOP? This action cannot be undone!')">
+                    <i class="fas fa-trash"></i>
+                    Delete
+                  </button>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="no-archives">
+        <i class="fas fa-inbox"></i>
+        <p>No archived SOPs found.</p>
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- Archived Lessons Learned -->
+  <div class="archive-section">
+    <h2>🎓 Archived Lessons Learned ({{ archived_lessons|length }})</h2>
+    
+    {% if archived_lessons %}
+      <div class="archive-table-container">
+        <table class="archive-table">
+          <thead>
+            <tr>
+              <th>Title</th>
+              <th>Author</th>
+              <th>Department</th>
+              <th>Content</th>
+              <th>Original Date</th>
+              <th>Archived Date</th>
+              <th>Archived By</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item, archived_by_name in archived_lessons %}
+            <tr>
+              <td class="archive-title">{{ item.title }}</td>
+              <td class="archive-author">{{ item.author or 'N/A' }}</td>
+              <td class="archive-department">{{ item.department or 'N/A' }}</td>
+              <td class="archive-content">{{ item.content[:100] }}{% if item.content|length > 100 %}...{% endif %}</td>
+              <td class="archive-date">{{ item.created_at | to_ist }}</td>
+              <td class="archive-date">{{ item.archived_at | to_ist }}</td>
+              <td class="archive-user">{{ archived_by_name or 'System' }}</td>
+              <td class="archive-actions">
+                <form method="POST" action="{{ url_for('restore_archived_item', item_type='lesson', item_id=item.id) }}" class="inline-form">
+                  <button type="submit" class="btn btn-success btn-small"
+                          onclick="return confirm('Restore this lesson? It will be visible to all users again.')">
+                    <i class="fas fa-undo"></i>
+                    Restore
+                  </button>
+                </form>
+                <form method="POST" action="{{ url_for('delete_archived_item', item_type='lesson', item_id=item.id) }}" class="inline-form">
+                  <button type="submit" class="btn btn-danger btn-small"
+                          onclick="return confirm('⚠️ PERMANENTLY DELETE this archived lesson? This action cannot be undone!')">
+                    <i class="fas fa-trash"></i>
+                    Delete
+                  </button>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="no-archives">
+        <i class="fas fa-inbox"></i>
+        <p>No archived lessons learned found.</p>
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- Navigation -->
+  <div class="archive-navigation">
+    <a href="{{ url_for('backup_page') }}" class="btn btn-secondary">
+      <i class="fas fa-arrow-left"></i>
+      Back to Backup Management
+    </a>
+    <a href="{{ url_for('home') }}" class="btn btn-secondary">
+      <i class="fas fa-home"></i>
+      Back to Home
+    </a>
+  </div>
+</div>
+
+<style>
+  .archive-section {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    padding: 2rem;
+    margin: 2rem 0;
+  }
+
+  .archive-section h2 {
+    color: var(--gray-800);
+    margin-bottom: 1.5rem;
+    font-size: 1.5rem;
+    border-bottom: 2px solid var(--primary-100);
+    padding-bottom: 0.5rem;
+  }
+
+  .archive-table-container {
+    overflow-x: auto;
+  }
+
+  .archive-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1rem;
+  }
+
+  .archive-table th,
+  .archive-table td {
+    padding: 1rem;
+    text-align: left;
+    border-bottom: 1px solid var(--gray-200);
+    font-size: 0.9rem;
+  }
+
+  .archive-table th {
+    background: var(--gray-50);
+    font-weight: 600;
+    color: var(--gray-700);
+  }
+
+  .archive-id,
+  .archive-date {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    color: var(--gray-600);
+  }
+
+  .archive-message,
+  .archive-summary,
+  .archive-content {
+    max-width: 200px;
+    word-wrap: break-word;
+  }
+
+  .no-archives {
+    text-align: center;
+    padding: 3rem;
+    color: var(--gray-500);
+  }
+
+  .no-archives i {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+  }
+
+  .archive-navigation {
+    text-align: center;
+    margin-top: 2rem;
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+  }
+
+  .btn-small {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.8rem;
+  }
+
+  /* Archive actions styling to prevent congestion */
+  .archive-actions {
+    min-width: 140px;
+    white-space: nowrap;
+  }
+
+  .archive-actions .inline-form {
+    display: inline-block;
+    margin: 0 2px;
+  }
+
+  .archive-actions .btn-small {
+    padding: 0.3rem 0.6rem;
+    font-size: 0.75rem;
+    margin: 1px;
+    min-width: 60px;
+  }
+
+  /* Stack buttons vertically on smaller screens */
+  @media (max-width: 1024px) {
+    .archive-actions {
+      min-width: 80px;
+    }
+
+    .archive-actions .inline-form {
+      display: block;
+      margin: 2px 0;
+    }
+
+    .archive-actions .btn-small {
+      width: 100%;
+      margin: 1px 0;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .archive-table {
+      font-size: 0.8rem;
+    }
+    
+    .archive-table th,
+    .archive-table td {
+      padding: 0.5rem;
+    }
+
+    .archive-navigation {
+      flex-direction: column;
+    }
+  }
+</style>
+{% endblock %}

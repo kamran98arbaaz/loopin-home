@@ -1,6 +1,0 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
-/* Small project-specific utilities */
-.logo-img { width: 160px; }

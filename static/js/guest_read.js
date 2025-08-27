@@ -8,7 +8,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let currentCountElement = null;
 
   // Only run on updates page
-  if (!document.querySelector('.updates-list')) return;
+  if (!document.querySelector('.updates-list') && !document.querySelector('.updates-grid')) return;
 
   document.querySelectorAll('.update-item[data-update-id]').forEach(el => {
     el.style.cursor = 'pointer';

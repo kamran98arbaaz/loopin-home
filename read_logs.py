@@ -5,6 +5,7 @@ from models import ReadLog
 from datetime import datetime
 import pytz
 from sqlalchemy import func
+from timezone_utils import now_utc
 
 bp = Blueprint('read_logs', __name__)
 
@@ -34,11 +35,21 @@ def mark_read():
             read_count = db.session.query(func.count(ReadLog.id)).filter_by(update_id=update_id).scalar()
             return jsonify(status='success', read_count=read_count), 200
 
+        # Get client IP address
+        client_ip = request.environ.get('HTTP_X_FORWARDED_FOR', request.environ.get('REMOTE_ADDR', 'Unknown'))
+        if ',' in client_ip:
+            client_ip = client_ip.split(',')[0].strip()  # Get first IP if multiple
+
+        # Get user agent
+        user_agent = request.headers.get('User-Agent', 'Unknown')
+
         log = ReadLog(
             update_id=update_id,
             user_id=user_id if user_id else None,
             guest_name=None if user_id else guest_name,
-            timestamp=datetime.now(pytz.UTC)
+            timestamp=now_utc(),
+            ip_address=client_ip,
+            user_agent=user_agent
         )
         db.session.add(log)
         db.session.commit()

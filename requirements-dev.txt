@@ -1,1 +1,2 @@
-fakeredis==2.17.0
+pytest
+fakeredis

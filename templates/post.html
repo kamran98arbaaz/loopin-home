@@ -1,28 +1,638 @@
 {% extends 'base.html' %}
+
 {% block title %}Post Update – {{ app_name }}{% endblock %}
 
+{% block head %}
+  <style>
+    .post-container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    .page-header {
+      margin-bottom: var(--space-8);
+      text-align: center;
+    }
+
+    .page-title {
+      font-size: 2.5rem;
+      font-weight: 700;
+      color: var(--gray-900);
+      margin-bottom: var(--space-2);
+    }
+
+    .page-subtitle {
+      color: var(--gray-600);
+      font-size: 1.1rem;
+      margin-bottom: var(--space-6);
+    }
+
+    .post-form {
+      background: white;
+      border-radius: var(--radius-2xl);
+      padding: var(--space-8);
+      box-shadow: var(--shadow-xl);
+      border: 1px solid var(--gray-200);
+    }
+
+    .form-section {
+      margin-bottom: var(--space-8);
+    }
+
+    .form-section:last-child {
+      margin-bottom: 0;
+    }
+
+    .section-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--gray-900);
+      margin-bottom: var(--space-4);
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+    }
+
+    .section-title i {
+      color: var(--primary-500);
+      font-size: 1.1rem;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--space-4);
+      margin-bottom: var(--space-6);
+    }
+
+    .form-group {
+      margin-bottom: var(--space-6);
+    }
+
+    .form-group.full-width {
+      grid-column: 1 / -1;
+    }
+
+    .form-label {
+      display: block;
+      margin-bottom: var(--space-2);
+      font-weight: 500;
+      color: var(--gray-700);
+      font-size: 0.9rem;
+    }
+
+    .form-label.required::after {
+      content: ' *';
+      color: var(--error-500);
+    }
+
+    .form-input {
+      width: 100%;
+      padding: var(--space-4);
+      border: 2px solid var(--gray-200);
+      border-radius: var(--radius-lg);
+      font-size: 1rem;
+      transition: all var(--transition-normal);
+      background: white;
+      box-shadow: var(--shadow-sm);
+      font-family: inherit;
+    }
+
+    .form-input:focus {
+      outline: none;
+      border-color: var(--primary-500);
+      box-shadow: 0 0 0 4px var(--primary-100);
+      transform: translateY(-2px);
+    }
+
+    .form-input::placeholder {
+      color: var(--gray-400);
+    }
+
+    .form-input.error {
+      border-color: var(--error-500);
+      box-shadow: 0 0 0 4px var(--error-100);
+    }
+
+    .form-error {
+      color: var(--error-600);
+      font-size: 0.85rem;
+      margin-top: var(--space-1);
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+    }
+
+    .form-error i {
+      font-size: 0.8rem;
+    }
+
+    .form-textarea {
+      min-height: 150px;
+      resize: vertical;
+      line-height: 1.6;
+    }
+
+    .form-select {
+      width: 100%;
+      padding: var(--space-4);
+      border: 2px solid var(--gray-200);
+      border-radius: var(--radius-lg);
+      font-size: 1rem;
+      transition: all var(--transition-normal);
+      background: white;
+      box-shadow: var(--shadow-sm);
+      cursor: pointer;
+    }
+
+    .form-select:focus {
+      outline: none;
+      border-color: var(--primary-500);
+      box-shadow: 0 0 0 4px var(--primary-100);
+      transform: translateY(-2px);
+    }
+
+    .tags-container {
+      position: relative;
+    }
+
+    .tags-input {
+      width: 100%;
+      padding: var(--space-4);
+      border: 2px solid var(--gray-200);
+      border-radius: var(--radius-lg);
+      font-size: 1rem;
+      transition: all var(--transition-normal);
+      background: white;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .tags-input:focus {
+      outline: none;
+      border-color: var(--primary-500);
+      box-shadow: 0 0 0 4px var(--primary-100);
+      transform: translateY(-2px);
+    }
+
+    .tags-hint {
+      font-size: 0.85rem;
+      color: var(--gray-500);
+      margin-top: var(--space-2);
+    }
+
+    .selected-tags {
+      margin-top: var(--space-3);
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-2);
+    }
+
+    .selected-tag {
+      background: var(--primary-100);
+      color: var(--primary-700);
+      padding: var(--space-2) var(--space-3);
+      border-radius: var(--radius-lg);
+      font-size: 0.85rem;
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      font-weight: 500;
+    }
+
+    .remove-tag {
+      background: none;
+      border: none;
+      color: var(--primary-700);
+      cursor: pointer;
+      font-size: 1rem;
+      padding: 0;
+      width: 20px;
+      height: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      transition: all var(--transition-fast);
+    }
+
+    .remove-tag:hover {
+      background: var(--primary-200);
+      transform: scale(1.1);
+    }
+
+    .form-actions {
+      display: flex;
+      gap: var(--space-4);
+      justify-content: flex-end;
+      padding-top: var(--space-6);
+      border-top: 1px solid var(--gray-200);
+    }
+
+    .btn {
+      padding: var(--space-4) var(--space-6);
+      border: none;
+      border-radius: var(--radius-lg);
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all var(--transition-normal);
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-2);
+      min-width: 120px;
+      justify-content: center;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--primary-600), var(--primary-700));
+      color: white;
+      box-shadow: var(--shadow-md);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-lg);
+    }
+
+    .btn-primary:active {
+      transform: translateY(0);
+    }
+
+    .btn-secondary {
+      background: white;
+      color: var(--gray-700);
+      border: 2px solid var(--gray-300);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .btn-secondary:hover {
+      background: var(--gray-50);
+      border-color: var(--gray-400);
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-md);
+    }
+
+    .btn:disabled {
+      background: var(--gray-400);
+      color: var(--gray-600);
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .character-count {
+      font-size: 0.85rem;
+      color: var(--gray-500);
+      margin-top: var(--space-2);
+      text-align: right;
+    }
+
+    .character-count.warning {
+      color: var(--warning-600);
+    }
+
+    .character-count.error {
+      color: var(--error-600);
+    }
+
+    .preview-section {
+      background: var(--gray-50);
+      border-radius: var(--radius-lg);
+      padding: var(--space-4);
+      margin-top: var(--space-4);
+      border: 1px solid var(--gray-200);
+    }
+
+    .preview-title {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--gray-700);
+      margin-bottom: var(--space-2);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .preview-content {
+      color: var(--gray-600);
+      font-size: 0.9rem;
+      line-height: 1.5;
+    }
+
+    .help-text {
+      font-size: 0.85rem;
+      color: var(--gray-500);
+      margin-top: var(--space-2);
+      line-height: 1.4;
+    }
+
+    .help-text a {
+      color: var(--primary-600);
+      text-decoration: none;
+    }
+
+    .help-text a:hover {
+      color: var(--primary-700);
+    }
+
+    @media (max-width: 768px) {
+      .page-title {
+        font-size: 2rem;
+      }
+
+      .post-form {
+        padding: var(--space-6);
+      }
+
+      .form-row {
+        grid-template-columns: 1fr;
+        gap: 0;
+      }
+
+      .form-actions {
+        flex-direction: column;
+        gap: var(--space-3);
+      }
+
+      .btn {
+        width: 100%;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .page-title {
+        font-size: 1.75rem;
+      }
+
+      .post-form {
+        padding: var(--space-4);
+      }
+
+      .section-title {
+        font-size: 1.1rem;
+      }
+    }
+  </style>
+{% endblock %}
+
 {% block content %}
-  <h2>Post a New Update</h2>
-  <form method="POST" action="{{ url_for('post_update') }}" class="post-form">
-    <label for="process">Process:</label>
-    <select name="process" id="process" required>
-      <option value="" disabled selected>Select a process</option>
-      {% for process in processes %}
-        <option
-          value="{{ process }}"
-          {% if request.form.get('process') == process %}selected{% endif %}
-        >{{ process }}</option>
-      {% endfor %}
-    </select>
+<div class="post-container">
+  <!-- Page Header -->
+  <div class="page-header">
+    <h1 class="page-title">Share an Update</h1>
+    <p class="page-subtitle">Keep your team informed about your progress and insights</p>
+  </div>
 
-    <label for="message">Message:</label>
-    <textarea
-      name="message"
-      id="message"
-      rows="4"
-      required
-    >{{ request.form.get('message', '') }}</textarea>
+  <!-- Post Form -->
+  <form class="post-form" method="POST" id="postForm">
+    <!-- Basic Information Section -->
+    <div class="form-section">
+      <h2 class="section-title">
+        <i class="fas fa-info-circle"></i>
+        Basic Information
+      </h2>
 
-    <button type="submit" class="button">Post Update</button>
+      <div class="form-group">
+        <label for="process" class="form-label required">Process</label>
+        <select id="process" name="process" class="form-select" required>
+          <option value="">Select a process</option>
+          {% for process in processes %}
+            <option value="{{ process }}">{{ process }}</option>
+          {% endfor %}
+        </select>
+        <div class="help-text">
+          Choose the process that best describes your update's context.
+        </div>
+      </div>
+    </div>
+
+    <!-- Content Section -->
+    <div class="form-section">
+      <h2 class="section-title">
+        <i class="fas fa-edit"></i>
+        Update Content
+      </h2>
+
+      <div class="form-group">
+        <label for="message" class="form-label required">Update Message</label>
+        <textarea
+          id="message"
+          name="message"
+          class="form-input form-textarea"
+          placeholder="Describe your update in detail. Include progress, challenges, insights, and next steps..."
+          required
+          maxlength="2000"
+        ></textarea>
+        <div class="character-count" id="messageCount">0/2000</div>
+        <div class="help-text">
+          Be specific about what you've accomplished, any challenges you faced, and what's coming next.
+          This helps team members understand the full context.
+        </div>
+
+        <!-- Live Preview -->
+        <div class="preview-section" id="messagePreview" style="display: none;">
+          <div class="preview-title">Live Preview</div>
+          <div class="preview-content" id="previewText"></div>
+        </div>
+      </div>
+    </div>
+
+
+
+    <!-- Form Actions -->
+    <div class="form-actions">
+      <a href="{{ url_for('home') }}" class="btn btn-secondary">
+        <i class="fas fa-times"></i>
+        Cancel
+      </a>
+      
+      <button type="submit" class="btn btn-primary" id="submitBtn">
+        <i class="fas fa-paper-plane"></i>
+        Post Update
+      </button>
+    </div>
   </form>
+</div>
+
+<script>
+  // Character count functionality
+  function updateCharacterCount(inputId, countId, maxLength) {
+    const input = document.getElementById(inputId);
+    const count = document.getElementById(countId);
+    
+    input.addEventListener('input', function() {
+      const length = this.value.length;
+      const remaining = maxLength - length;
+      
+      count.textContent = `${length}/${maxLength}`;
+      
+      // Update count styling based on remaining characters
+      count.className = 'character-count';
+      if (remaining <= maxLength * 0.1) {
+        count.classList.add('error');
+      } else if (remaining <= maxLength * 0.2) {
+        count.classList.add('warning');
+      }
+    });
+  }
+
+  // Initialize character counts
+  updateCharacterCount('message', 'messageCount', 2000);
+
+  // Live preview functionality
+  const messageInput = document.getElementById('message');
+  const previewSection = document.getElementById('messagePreview');
+  const previewText = document.getElementById('previewText');
+
+  messageInput.addEventListener('input', function() {
+    const content = this.value.trim();
+
+    if (content.length > 0) {
+      previewText.textContent = content;
+      previewSection.style.display = 'block';
+    } else {
+      previewSection.style.display = 'none';
+    }
+  });
+
+
+
+  // Form validation
+  document.getElementById('postForm').addEventListener('submit', function(e) {
+    const message = document.getElementById('message').value.trim();
+    const process = document.getElementById('process').value;
+
+    let isValid = true;
+
+    // Clear previous errors
+    document.querySelectorAll('.form-input').forEach(input => {
+      input.classList.remove('error');
+    });
+    document.querySelectorAll('.form-error').forEach(error => {
+      error.remove();
+    });
+
+    // Validate message
+    if (!message) {
+      showFieldError('message', 'Message is required');
+      isValid = false;
+    } else if (message.length < 10) {
+      showFieldError('message', 'Message must be at least 10 characters long');
+      isValid = false;
+    }
+
+    // Validate process
+    if (!process) {
+      showFieldError('process', 'Please select a process');
+      isValid = false;
+    }
+
+    if (!isValid) {
+      e.preventDefault();
+      showToast('Please fix the errors above', 'error');
+    } else {
+      // Show loading state
+      const submitBtn = document.getElementById('submitBtn');
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Posting...';
+    }
+  });
+
+  function showFieldError(fieldId, message) {
+    const field = document.getElementById(fieldId);
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'form-error';
+    errorDiv.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${message}`;
+    
+    field.classList.add('error');
+    field.parentNode.appendChild(errorDiv);
+  }
+
+  function showToast(message, type = 'info') {
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    toast.textContent = message;
+
+    // Add unique ID to prevent conflicts
+    toast.id = 'toast-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+
+    document.body.appendChild(toast);
+
+    setTimeout(() => {
+      toast.classList.add('show');
+    }, 100);
+
+    setTimeout(() => {
+      toast.classList.remove('show');
+      setTimeout(() => {
+        if (document.body.contains(toast)) {
+          document.body.removeChild(toast);
+        }
+      }, 300);
+    }, 2000);
+  }
+
+  // Auto-save draft functionality
+  let autoSaveTimer;
+
+  function autoSaveDraft() {
+    const formData = {
+      message: document.getElementById('message').value,
+      process: document.getElementById('process').value,
+      timestamp: new Date().toISOString()
+    };
+
+    localStorage.setItem('updateDraft', JSON.stringify(formData));
+  }
+
+  // Set up auto-save
+  document.querySelectorAll('input, textarea, select').forEach(element => {
+    element.addEventListener('input', function() {
+      clearTimeout(autoSaveTimer);
+      autoSaveTimer = setTimeout(autoSaveDraft, 2000);
+    });
+  });
+
+  // Load draft on page load
+  document.addEventListener('DOMContentLoaded', function() {
+    const draft = localStorage.getItem('updateDraft');
+    if (draft) {
+      try {
+        const data = JSON.parse(draft);
+        const draftAge = new Date() - new Date(data.timestamp);
+        const daysOld = draftAge / (1000 * 60 * 60 * 24);
+
+        if (daysOld < 7) { // Only load drafts less than 7 days old
+          if (confirm('We found a saved draft. Would you like to load it?')) {
+            document.getElementById('message').value = data.message || '';
+            document.getElementById('process').value = data.process || '';
+
+            // Trigger input events to update character counts and preview
+            document.getElementById('message').dispatchEvent(new Event('input'));
+          }
+        } else {
+          localStorage.removeItem('updateDraft');
+        }
+      } catch (e) {
+        localStorage.removeItem('updateDraft');
+      }
+    }
+  });
+
+  // Clear draft when form is successfully submitted
+  document.getElementById('postForm').addEventListener('submit', function() {
+    localStorage.removeItem('updateDraft');
+  });
+
+  // Add focus effects to form inputs
+  document.querySelectorAll('.form-input, .form-select').forEach(input => {
+    input.addEventListener('focus', function() {
+      this.parentNode.style.transform = 'translateY(-2px)';
+    });
+    
+    input.addEventListener('blur', function() {
+      this.parentNode.style.transform = 'translateY(0)';
+    });
+  });
+</script>
 {% endblock %}

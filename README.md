@@ -1,112 +1,232 @@
-LoopIn - Frontend build & Redis setup
+# LoopIn
 
-LoopIn (refactor/api-blueprints)
-=================================
+**A modern, professional web application for team updates and communication.**
 
-This repository contains a small Flask app (LoopIn) and a refactor branch `refactor/api-blueprints` that adds a simple API, rate-limiting fallbacks, CI asset build, and basic health/metrics endpoints.
+LoopIn is a comprehensive team communication platform designed to streamline updates, track progress, and maintain organizational knowledge through SOP summaries and lessons learned.
 
-Quick start (local)
--------------------
-1. Create and activate a Python virtual environment (Windows PowerShell):
+## ✨ Key Features
 
-```powershell
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
+### 🔔 Real-time Notifications
+- **Bell Icon System**: Pulsing red badge for new updates within 24 hours
+- **Updates Banner**: Dropdown showing 3 most recent updates with "View All" option
+- **Sound Notifications**: Audio alerts for new updates
+- **Live Updates**: Socket.IO powered real-time communication
+
+### 📝 Update Management
+- **Create Updates**: Rich text updates with process categorization
+- **Edit/Delete**: Full CRUD operations with proper authentication
+- **Browse Updates**: Clean, modern card-based interface with read counts
+- **Search**: Enhanced search functionality across all updates
+
+### 👥 User Management
+- **Secure Authentication**: Flask-Login with session management
+- **User Registration**: Simplified registration without help text clutter
+- **Display Names**: Professional user identification system
+
+### 📚 Knowledge Management
+- **SOP Summaries**: Standard Operating Procedure documentation
+- **Lessons Learned**: Capture and share organizational learning
+- **Search Integration**: Find knowledge across all content types
+
+### 🎨 Modern UI/UX
+- **Professional Design**: Clean, modern interface with consistent styling
+- **Responsive Layout**: Works seamlessly on desktop and mobile devices
+- **Visual Indicators**: Pulsing badges and clear status indicators
+- **Intuitive Navigation**: User-friendly interface with logical flow
+
+## 🚀 Quick Start
+
+### Prerequisites
+- Python 3.8+
+- PostgreSQL database
+- Git
+
+### Installation
+
+1. **Clone the repository:**
+   ```bash
+   git clone <repository-url>
+   cd loopin_railway_clean_deploy
+   ```
+
+2. **Install dependencies:**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+3. **Set up environment variables:**
+   ```bash
+   # Create a .env file or set environment variables
+   DATABASE_URL=postgresql://username:password@localhost/loopin
+   SECRET_KEY=your-secret-key-here
+   FLASK_ENV=development
+   ```
+
+4. **Initialize the database:**
+   ```bash
+   python init_db.py
+   ```
+
+5. **Run the application:**
+   ```bash
+   python app.py
+   ```
+
+6. **Access the application:**
+   Open your browser and navigate to `http://localhost:5000`
+
+## 🔧 Configuration
+
+### Environment Variables
+
+| Variable | Description | Required | Example |
+|----------|-------------|----------|---------|
+| `DATABASE_URL` | PostgreSQL connection string | Yes | `postgresql://user:pass@localhost/loopin` |
+| `TEST_DATABASE_URL` | Test database connection string | No | `postgresql://user:pass@localhost/loopin_test` |
+| `FLASK_SECRET_KEY` | Flask secret key for sessions | Yes | `your-super-secret-key` |
+| `FLASK_ENV` | Environment (development/production/testing) | No | `production` |
+| `TESTING` | Enable testing mode (true/false) | No | `false` |
+| `PORT` | Port number (default: 8000) | No | `8000` |
+
+### Database Setup
+
+The application uses PostgreSQL with SQLAlchemy ORM. Database migrations are handled through Flask-Migrate.
+
+```bash
+# Create migration
+flask db migrate -m "Description"
+
+# Apply migration
+flask db upgrade
 ```
 
-2. Install runtime deps:
+### Testing Setup
 
-```powershell
-python -m pip install --upgrade pip
-pip install -r requirements.txt
-```
+**🔒 IMPORTANT: Tests now use a separate database to protect production data!**
 
-3. (Optional) Install dev/test deps (fakeredis) from `requirements-dev.txt`:
+1. **Create test database:**
+   ```bash
+   # PostgreSQL
+   createdb loopin_test
 
-```powershell
-pip install -r requirements-dev.txt
-```
+   # Or use SQLite (automatic fallback)
+   # No setup needed - will create test_loopin.db automatically
+   ```
 
-4. Run the app (set DATABASE_URL to a local sqlite for quick dev):
+2. **Set test environment variables:**
+   ```bash
+   # Option 1: Set in .env file
+   TEST_DATABASE_URL=postgresql://username:password@localhost/loopin_test
 
-```powershell
-$env:DATABASE_URL = "sqlite:///dev.db"
-flask run
-```
+   # Option 2: Set for single test run
+   TESTING=true python -m pytest
+   ```
 
-Running tests
--------------
-Run the full test suite using the project's virtualenv Python:
+3. **Run tests safely:**
+   ```bash
+   # Using the test helper
+   python test_config.py run
 
-```powershell
-.\.venv\Scripts\python.exe -m pytest -q
-```
+   # Or manually
+   TESTING=true python -m pytest
 
-Build CSS (Tailwind)
---------------------
-A small Tailwind pipeline is included (source in `assets/css/tailwind.css`) and `package.json` contains `build:css`.
+   # Or set environment and run
+   export TESTING=true
+   python -m pytest
+   ```
 
-If you have Node installed locally:
+## 🏗️ Architecture
 
-```powershell
-npm ci
-npm run build:css
-```
+### Backend
+- **Framework**: Flask with Blueprint architecture
+- **Database**: PostgreSQL with SQLAlchemy ORM
+- **Authentication**: Flask-Login with secure session management
+- **Real-time**: Socket.IO for live notifications
+- **API**: RESTful endpoints for frontend integration
 
-This writes the built stylesheet to `static/dist/styles.css`. The Flask app will prefer that file in templates when present.
+### Frontend
+- **Templates**: Jinja2 with modern HTML5 structure
+- **Styling**: Custom CSS with CSS variables and responsive design
+- **JavaScript**: Modular ES6+ code with proper error handling
+- **Assets**: Optimized images, sounds, and stylesheets
 
-CI and asset deployment
------------------------
-The GitHub Actions workflow `.github/workflows/ci.yml`:
-- Installs runtime (and optional dev) dependencies
-- Builds CSS if `package.json` is present
-- Uploads `static/dist/styles.css` as an artifact named `built-css`
-- Runs the test suite
-- Optional `deploy-assets` job (runs only on `master`) downloads the artifact and publishes `static/dist` to GitHub Pages when the artifact exists. It uses `GITHUB_TOKEN` to push via `peaceiris/actions-gh-pages`.
+### Key Components
+- **User Management**: Registration, login, session handling
+- **Update System**: CRUD operations with real-time notifications
+- **Search Engine**: Full-text search across all content
+- **Knowledge Base**: SOP summaries and lessons learned
+- **Notification System**: Bell icon with badge and banner
 
-If you prefer SSH deploy keys instead, you can switch the deploy step to use an SSH `DEPLOY_KEY` secret.
+## 🚀 Deployment
 
-Health & metrics
-----------------
-- `/health` — combined health check returning DB status and Redis status (if Redis is configured).
-- `/api/health/redis` — Redis connectivity check (200 OK when reachable, 503 otherwise).
-- `/metrics` — a tiny Prometheus-style plaintext endpoint that returns `app_uptime_seconds` and `updates_total` and `redis_up`.
+### Railway Deployment
 
-If you want richer Prometheus integration, install `prometheus_client` and I can wire up proper collectors.
+This application is optimized for Railway deployment:
 
-Dev extras
-----------
-- `requirements-dev.txt` and `setup.cfg` define dev/test extras (e.g. `fakeredis`) to keep test-only deps separate from production `requirements.txt`.
+1. **Connect Repository**: Link your Git repository to Railway
+2. **Environment Variables**: Set required environment variables in Railway dashboard
+3. **Database**: Add PostgreSQL service in Railway
+4. **Deploy**: Railway will automatically deploy on push to main branch
 
-Environment variables
----------------------
-- `DATABASE_URL` — required. e.g. `sqlite:///dev.db` or a Postgres DSN.
-- `API_WRITE_KEY` — API key used by the write endpoint when not posting as an authenticated session.
-- `REDIS_URL` — if set, the app will attempt Redis-backed rate limiting.
-- `API_RATE_LIMIT`, `API_RATE_WINDOW` — optional numeric env vars to tune rate limits.
-- `FLASK_SECRET_KEY` — secret key; if not set, a default placeholder is used (replace in production).
+### Production Checklist
 
-Next steps you can ask me to perform
------------------------------------
-- Wire Prometheus client metrics (install `prometheus_client` and expose proper metrics).
-- Add automatic asset publishing to an S3 bucket instead of GitHub Pages.
-- Add monitoring/alerting hooks (PagerDuty/Webhook) for health failures.
+- [x] Environment variables configured
+- [x] Database migrations applied
+- [x] Static assets optimized
+- [x] Error handling implemented
+- [x] Security measures in place
+- [x] Performance optimized
 
-S3 asset publishing (CI)
-------------------------
-The CI job `deploy-s3` will sync `static/dist` to an S3 bucket when on `master` if you set the following repository secrets:
+## 📱 Usage
 
-- `AWS_ACCESS_KEY_ID`
-- `AWS_SECRET_ACCESS_KEY`
-- `AWS_REGION`
-- `S3_BUCKET`
+### For Users
+1. **Register/Login**: Create account or sign in
+2. **Post Updates**: Share progress and updates with your team
+3. **Browse Updates**: View team updates with visual indicators for new content
+4. **Search**: Find specific updates or information quickly
+5. **Notifications**: Stay informed with real-time alerts
 
-It uses `aws s3 sync` and sets objects to `public-read`.
+### For Administrators
+1. **User Management**: Monitor user activity and manage accounts
+2. **Content Moderation**: Edit or remove inappropriate content
+3. **Knowledge Management**: Organize SOPs and lessons learned
+4. **System Monitoring**: Track application health and performance
 
-Health alerts
--------------
-Set `HEALTH_ALERT_URL` to a webhook URL (PagerDuty, Slack incoming webhook, etc.). You can trigger an alert manually via POST to `/health/alert` and the app will forward the current `/health` payload.
+## 🔒 Security Features
+
+- **CSRF Protection**: Enabled for all forms
+- **SQL Injection Prevention**: SQLAlchemy ORM with parameterized queries
+- **Session Security**: Secure session management with Flask-Login
+- **Input Validation**: Comprehensive input sanitization
+- **Authentication**: Proper user authentication and authorization
+
+## 🎯 Recent Updates
+
+### Latest Features (2025)
+- ✅ **Bell Icon System**: Restored with badge and updates banner
+- ✅ **Update Card Improvements**: Read count repositioned, NEW badges removed
+- ✅ **Modern Edit Page**: Professional design with enhanced UI
+- ✅ **Browse Updates Badge**: 24-hour pulsing red dot indicator
+- ✅ **Banner Optimization**: Limited to 3 updates with "View All" option
+- ✅ **Clean Architecture**: Removed unnecessary files and dependencies
+- ✅ **Production Ready**: Comprehensive testing and optimization
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## 📄 License
+
+This project is proprietary software. All rights reserved.
+
+## 📞 Support
+
+For support and questions, please contact the development team.
 
 ---
 
-If you want me to proceed with any of the next steps above, say which one and I'll implement it (update code, CI, and tests where applicable).
+**LoopIn 2025** - Streamlining team communication and knowledge management.

@@ -1,36 +1,367 @@
 {% extends "base.html" %}
-{% block title %}Edit SOP Summary{% endblock %}
+{% block title %}Edit SOP Summary – {{ app_name }}{% endblock %}
+
+{% block head %}
+<style>
+  .edit-container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: var(--space-8) var(--space-6);
+  }
+
+  .edit-header {
+    background: linear-gradient(135deg, var(--primary-50) 0%, var(--primary-100) 100%);
+    border-radius: var(--radius-xl);
+    padding: var(--space-8);
+    margin-bottom: var(--space-8);
+    border: 1px solid var(--primary-200);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .edit-header::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--primary-500), var(--primary-600));
+  }
+
+  .edit-title {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--gray-900);
+    margin-bottom: var(--space-2);
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+  }
+
+  .edit-icon {
+    background: var(--primary-100);
+    color: var(--primary-600);
+    padding: var(--space-3);
+    border-radius: var(--radius-lg);
+    font-size: 1.5rem;
+  }
+
+  .edit-subtitle {
+    color: var(--gray-600);
+    font-size: 1.1rem;
+    margin: 0;
+  }
+
+  .edit-form {
+    background: white;
+    border-radius: var(--radius-xl);
+    padding: var(--space-8);
+    box-shadow: var(--shadow-md);
+    border: 1px solid var(--gray-200);
+    margin-bottom: var(--space-6);
+  }
+
+  .form-section {
+    margin-bottom: var(--space-8);
+  }
+
+  .section-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--gray-900);
+    margin-bottom: var(--space-4);
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .section-icon {
+    color: var(--primary-500);
+    font-size: 1.1rem;
+  }
+
+  .form-group {
+    margin-bottom: var(--space-6);
+  }
+
+  .form-label {
+    display: block;
+    font-weight: 600;
+    color: var(--gray-700);
+    margin-bottom: var(--space-2);
+    font-size: 0.95rem;
+  }
+
+  .form-label.required::after {
+    content: ' *';
+    color: var(--error-500);
+  }
+
+  .form-input,
+  .form-textarea {
+    width: 100%;
+    padding: var(--space-4);
+    border: 2px solid var(--gray-200);
+    border-radius: var(--radius-lg);
+    font-size: 1rem;
+    transition: all var(--transition-normal);
+    background: white;
+    font-family: inherit;
+    resize: vertical;
+  }
+
+  .form-input:focus,
+  .form-textarea:focus {
+    outline: none;
+    border-color: var(--primary-500);
+    box-shadow: 0 0 0 4px var(--primary-100);
+    transform: translateY(-1px);
+  }
+
+  .form-textarea {
+    min-height: 120px;
+    line-height: 1.6;
+  }
+
+  .form-textarea.large {
+    min-height: 200px;
+  }
+
+  .form-help {
+    font-size: 0.85rem;
+    color: var(--gray-500);
+    margin-top: var(--space-1);
+  }
+
+  .form-actions {
+    display: flex;
+    gap: var(--space-4);
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    padding-top: var(--space-6);
+    border-top: 2px solid var(--gray-100);
+  }
+
+  .action-group {
+    display: flex;
+    gap: var(--space-3);
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-3) var(--space-6);
+    border-radius: var(--radius-lg);
+    font-weight: 500;
+    text-decoration: none;
+    transition: all var(--transition-normal);
+    border: none;
+    cursor: pointer;
+    font-size: 0.95rem;
+    font-family: inherit;
+  }
+
+  .btn-primary {
+    background: linear-gradient(135deg, var(--primary-600), var(--primary-700));
+    color: white;
+    box-shadow: var(--shadow-md);
+  }
+
+  .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+  }
+
+  .btn-secondary {
+    background: var(--gray-100);
+    color: var(--gray-700);
+    border: 1px solid var(--gray-300);
+  }
+
+  .btn-secondary:hover {
+    background: var(--gray-200);
+    transform: translateY(-1px);
+  }
+
+  .btn-danger {
+    background: var(--error-600);
+    color: white;
+  }
+
+  .btn-danger:hover {
+    background: var(--error-700);
+    transform: translateY(-1px);
+  }
+
+  .danger-zone {
+    background: var(--error-50);
+    border: 1px solid var(--error-200);
+    border-radius: var(--radius-xl);
+    padding: var(--space-6);
+    margin-top: var(--space-8);
+  }
+
+  .danger-zone-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--error-700);
+    margin-bottom: var(--space-3);
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .danger-zone-text {
+    color: var(--error-600);
+    font-size: 0.9rem;
+    margin-bottom: var(--space-4);
+  }
+
+  @media (max-width: 768px) {
+    .edit-container {
+      padding: var(--space-6) var(--space-4);
+    }
+
+    .edit-header {
+      padding: var(--space-6);
+    }
+
+    .edit-title {
+      font-size: 1.5rem;
+    }
+
+    .edit-form {
+      padding: var(--space-6);
+    }
+
+    .form-actions {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .action-group {
+      justify-content: center;
+    }
+  }
+</style>
+{% endblock %}
 
 {% block content %}
-<h2>Edit SOP Summary</h2>
-
-<form method="POST" action="{{ url_for('edit_sop_summary', sop_id=sop.id) }}">
-  <div class="form-group">
-    <label for="title">Title*</label><br>
-    <input type="text" id="title" name="title" value="{{ sop.title }}" required class="form-control">
+<div class="edit-container">
+  <!-- Header Section -->
+  <div class="edit-header">
+    <h1 class="edit-title">
+      <div class="edit-icon">
+        <i class="fas fa-edit"></i>
+      </div>
+      Edit SOP Summary
+    </h1>
+    <p class="edit-subtitle">Update the Standard Operating Procedure summary details</p>
   </div>
 
-  <div class="form-group">
-    <label for="summary_text">Summary*</label><br>
-    <textarea id="summary_text" name="summary_text" rows="6" required class="form-control">{{ sop.summary_text }}</textarea>
+  <!-- Edit Form -->
+  <form method="POST" action="{{ url_for('edit_sop_summary', sop_id=sop.id) }}" class="edit-form">
+    <!-- Basic Information Section -->
+    <div class="form-section">
+      <h2 class="section-title">
+        <i class="fas fa-info-circle section-icon"></i>
+        Basic Information
+      </h2>
+
+      <div class="form-group">
+        <label for="title" class="form-label required">Title</label>
+        <input
+          type="text"
+          id="title"
+          name="title"
+          value="{{ sop.title }}"
+          required
+          class="form-input"
+          placeholder="Enter a clear, descriptive title for this SOP"
+        >
+        <div class="form-help">Choose a title that clearly identifies the procedure</div>
+      </div>
+
+      <div class="form-group">
+        <label for="summary_text" class="form-label required">Summary</label>
+        <textarea
+          id="summary_text"
+          name="summary_text"
+          required
+          class="form-textarea large"
+          placeholder="Provide a comprehensive summary of the standard operating procedure..."
+        >{{ sop.summary_text }}</textarea>
+        <div class="form-help">Describe the key steps, requirements, and important details</div>
+      </div>
+    </div>
+
+    <!-- Organization Section -->
+    <div class="form-section">
+      <h2 class="section-title">
+        <i class="fas fa-tags section-icon"></i>
+        Organization & Classification
+      </h2>
+
+      <div class="form-group">
+        <label for="department" class="form-label">Department</label>
+        <input
+          type="text"
+          id="department"
+          name="department"
+          value="{{ sop.department or '' }}"
+          class="form-input"
+          placeholder="e.g., Operations, HR, IT, Finance"
+        >
+        <div class="form-help">Specify which department this SOP applies to</div>
+      </div>
+
+      <div class="form-group">
+        <label for="tags" class="form-label">Tags</label>
+        <input
+          type="text"
+          id="tags"
+          name="tags"
+          value="{{ sop.tags | join(', ') if sop.tags else '' }}"
+          class="form-input"
+          placeholder="e.g., process, safety, compliance, training"
+        >
+        <div class="form-help">Add comma-separated tags to help categorize and find this SOP</div>
+      </div>
+    </div>
+
+    <!-- Form Actions -->
+    <div class="form-actions">
+      <div class="action-group">
+        <a href="{{ url_for('view_sop_summary', summary_id=sop.id) }}" class="btn btn-secondary">
+          <i class="fas fa-times"></i>
+          Cancel
+        </a>
+        <button type="submit" class="btn btn-primary">
+          <i class="fas fa-save"></i>
+          Save Changes
+        </button>
+      </div>
+    </div>
+  </form>
+
+  <!-- Danger Zone -->
+  <div class="danger-zone">
+    <h3 class="danger-zone-title">
+      <i class="fas fa-exclamation-triangle"></i>
+      Danger Zone
+    </h3>
+    <p class="danger-zone-text">
+      Deleting this SOP summary is permanent and cannot be undone. All associated data will be lost.
+    </p>
+    <form method="POST" action="{{ url_for('delete_sop_summary', sop_id=sop.id) }}" onsubmit="return confirm('Are you absolutely sure you want to delete this SOP Summary? This action cannot be undone.');">
+      <button type="submit" class="btn btn-danger">
+        <i class="fas fa-trash-alt"></i>
+        Delete SOP Summary
+      </button>
+    </form>
   </div>
-
-  <div class="form-group">
-    <label for="department">Department</label><br>
-    <input type="text" id="department" name="department" value="{{ sop.department or '' }}" class="form-control">
-  </div>
-
-  <div class="form-group">
-    <label for="tags">Tags (comma-separated)</label><br>
-    <input type="text" id="tags" name="tags" value="{{ sop.tags | join(', ') if sop.tags else '' }}" class="form-control">
-  </div>
-
-  <button type="submit" class="btn btn-primary">Save Changes</button>
-  <a href="{{ url_for('list_sop_summaries') }}" class="btn btn-secondary">Cancel</a>
-</form>
-
-<!-- Optional: Delete form -->
-<form method="POST" action="{{ url_for('delete_sop_summary', sop_id=sop.id) }}" onsubmit="return confirm('Are you sure you want to delete this SOP Summary?');" style="margin-top:1em;">
-  <button type="submit" class="btn btn-danger">Delete This SOP Summary</button>
-</form>
+</div>
 {% endblock %}
