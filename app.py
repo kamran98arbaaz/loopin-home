@@ -340,9 +340,21 @@ def create_app(config_name=None):
         except Exception:
             return dict(built_css=False, is_production=False)
 
-    # Routes    
+    # Routes
     @app.route("/health")
     def health():
+        """Simple health check endpoint for Railway deployment"""
+        try:
+            # Quick database connectivity check
+            db.session.execute(text("SELECT 1"))
+            return jsonify({"status": "ok", "db": "connected"}), 200
+        except Exception as e:
+            logger.error(f"Health check failed: {e}")
+            return jsonify({"status": "error", "db": "disconnected", "error": str(e)}), 500
+
+    @app.route("/health/detailed")
+    def health_detailed():
+        """Detailed health check with Redis and other services"""
         out = {"db": None}
         code = 200
         try:
