@@ -147,9 +147,19 @@ def create_app(config_name=None):
 
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
+    # Configure database connection options for better Railway compatibility
+    engine_options = {
+        "pool_pre_ping": True,
+        "pool_recycle": 300,
+        "pool_timeout": 20,
+        "max_overflow": 0
+    }
+
     sslmode = os.getenv("PG_SSLMODE")
     if sslmode and parsed.scheme in ("postgresql", "postgres"):
-        app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {"connect_args": {"sslmode": sslmode}}
+        engine_options["connect_args"] = {"sslmode": sslmode}
+
+    app.config["SQLALCHEMY_ENGINE_OPTIONS"] = engine_options
 
     db.init_app(app)
 
