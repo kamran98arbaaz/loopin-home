@@ -343,14 +343,54 @@ def create_app(config_name=None):
     # Routes
     @app.route("/health")
     def health():
-        """Simple health check endpoint for Railway deployment"""
+        """Ultra-simple health check endpoint for Railway deployment"""
+        return jsonify({"status": "ok", "timestamp": now_utc().isoformat()}), 200
+
+    @app.route("/health/db")
+    def health_db():
+        """Database-specific health check"""
         try:
             # Quick database connectivity check
             db.session.execute(text("SELECT 1"))
             return jsonify({"status": "ok", "db": "connected"}), 200
         except Exception as e:
-            logger.error(f"Health check failed: {e}")
+            logger.error(f"Database health check failed: {e}")
             return jsonify({"status": "error", "db": "disconnected", "error": str(e)}), 500
+
+    @app.route("/ready")
+    def ready():
+        """Readiness probe - checks if app is ready to serve traffic"""
+        try:
+            # Check database connectivity
+            db.session.execute(text("SELECT 1"))
+
+            # Check if tables exist
+            from sqlalchemy import inspect
+            inspector = inspect(db.engine)
+            tables = inspector.get_table_names()
+
+            if len(tables) > 0:
+                return jsonify({
+                    "status": "ready",
+                    "db": "connected",
+                    "tables": len(tables),
+                    "timestamp": now_utc().isoformat()
+                }), 200
+            else:
+                return jsonify({
+                    "status": "not_ready",
+                    "db": "connected",
+                    "tables": 0,
+                    "message": "Database tables not created yet"
+                }), 503
+
+        except Exception as e:
+            logger.error(f"Readiness check failed: {e}")
+            return jsonify({
+                "status": "not_ready",
+                "db": "disconnected",
+                "error": str(e)
+            }), 503
 
     @app.route("/health/detailed")
     def health_detailed():
