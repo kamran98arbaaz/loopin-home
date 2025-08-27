@@ -1946,8 +1946,10 @@ def create_app(config_name=None):
 
     return app
 
+# Create app instance for gunicorn
+app = create_app()
+
 if __name__ == "__main__":
-    app = create_app()
     port = int(os.getenv("PORT", 8000))
     # Set debug based on environment variable
     debug_mode = os.getenv("FLASK_DEBUG", "False").lower() == "true"

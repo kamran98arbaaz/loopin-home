@@ -73,14 +73,13 @@ def start_application():
     
     port = os.getenv('PORT', '8000')
     cmd = [
-        'gunicorn', 
-        'app:app',
+        'gunicorn',
+        'wsgi:application',
         '--bind', f'0.0.0.0:{port}',
         '--workers', '1',
         '--timeout', '300',
         '--max-requests', '1000',
-        '--max-requests-jitter', '100',
-        '--preload'
+        '--max-requests-jitter', '100'
     ]
     
     log(f"📝 Command: {' '.join(cmd)}")
