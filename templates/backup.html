@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block title %}Backup Management - LoopIn{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>💾 Backup Management</h2>
+                <a href="{{ url_for('home') }}" class="btn btn-secondary">← Back to Home</a>
+            </div>
+            
+            <!-- Create Backup Section -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5>Create New Backup</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('create_backup') }}">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <label for="backup_type" class="form-label">Backup Type</label>
+                                <select class="form-select" id="backup_type" name="backup_type" required>
+                                    <option value="manual">Manual Backup</option>
+                                    <option value="scheduled">Scheduled Backup</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 d-flex align-items-end">
+                                <button type="submit" class="btn btn-primary">Create Backup</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- Existing Backups -->
+            <div class="card">
+                <div class="card-header">
+                    <h5>Existing Backups</h5>
+                </div>
+                <div class="card-body">
+                    {% if backups %}
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Filename</th>
+                                        <th>Type</th>
+                                        <th>Size</th>
+                                        <th>Created</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for backup in backups %}
+                                    <tr>
+                                        <td>{{ backup.file.name }}</td>
+                                        <td>
+                                            <span class="badge bg-{{ 'primary' if backup.metadata.backup_type == 'manual' else 'secondary' }}">
+                                                {{ backup.metadata.backup_type.title() }}
+                                            </span>
+                                        </td>
+                                        <td>{{ "%.1f"|format(backup.metadata.file_size / 1024 / 1024) }} MB</td>
+                                        <td>{{ backup.metadata.created_at | format_backup_timestamp }}</td>
+                                        <td>
+                                            <div class="btn-group" role="group">
+                                                <a href="{{ url_for('download_backup', filename=backup.file.name) }}" 
+                                                   class="btn btn-sm btn-success">Download</a>
+                                                <form method="POST" action="{{ url_for('restore_backup') }}" 
+                                                      style="display: inline;" 
+                                                      onsubmit="return confirm('Are you sure you want to restore this backup? This will overwrite the current database.')">
+                                                    <input type="hidden" name="backup_file" value="{{ backup.file.name }}">
+                                                    <button type="submit" class="btn btn-sm btn-warning">Restore</button>
+                                                </form>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="text-muted">No backups found. Create your first backup above.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

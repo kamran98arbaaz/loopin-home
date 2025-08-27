@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+
+{% block title %}Archives - LoopIn{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>📁 Archives</h2>
+                <a href="{{ url_for('home') }}" class="btn btn-secondary">← Back to Home</a>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <div class="card">
+                        <div class="card-body text-center">
+                            <h5 class="card-title">📄 Archived Updates</h5>
+                            <p class="card-text">{{ archived_updates_count }} archived updates</p>
+                            <a href="#updates" class="btn btn-primary">View Updates</a>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-4 mb-3">
+                    <div class="card">
+                        <div class="card-body text-center">
+                            <h5 class="card-title">📋 Archived SOPs</h5>
+                            <p class="card-text">{{ archived_sops_count }} archived SOPs</p>
+                            <a href="#sops" class="btn btn-primary">View SOPs</a>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-4 mb-3">
+                    <div class="card">
+                        <div class="card-body text-center">
+                            <h5 class="card-title">💡 Archived Lessons</h5>
+                            <p class="card-text">{{ archived_lessons_count }} archived lessons</p>
+                            <a href="#lessons" class="btn btn-primary">View Lessons</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Archived Updates Section -->
+            <div id="updates" class="mt-5">
+                <h3>📄 Archived Updates</h3>
+                {% if archived_updates %}
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Process</th>
+                                    <th>Archived Date</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for update in archived_updates %}
+                                <tr>
+                                    <td>{{ update.name }}</td>
+                                    <td>{{ update.process }}</td>
+                                    <td>{{ update.timestamp | format_datetime }}</td>
+                                    <td>
+                                        <a href="{{ url_for('view_archived_update', id=update.id) }}" class="btn btn-sm btn-info">View</a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="text-muted">No archived updates found.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

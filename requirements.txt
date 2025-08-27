@@ -1,0 +1,58 @@
+# Core Flask dependencies
+Flask==2.3.3
+Flask-Login==0.6.3
+Flask-Migrate==4.1.0
+Flask-SocketIO==5.3.6
+Flask-SQLAlchemy==3.1.1
+
+# Database
+psycopg2-binary==2.9.10
+SQLAlchemy==2.0.42
+alembic==1.16.4
+
+# Web server for production
+gunicorn==21.2.0
+
+# Utilities
+python-dotenv==1.1.1
+pytz==2025.2
+requests==2.32.4
+marshmallow==3.19.0
+
+# Optional features
+prometheus-client==0.21.1
+
+# Excel export functionality
+pandas==2.2.3
+openpyxl==3.1.5
+
+# Socket.IO for real-time features
+python-socketio==5.11.4
+python-engineio==4.10.1
+
+# Core Python utilities
+Werkzeug==2.3.7
+Jinja2==3.1.4
+MarkupSafe==2.1.5
+itsdangerous==2.2.0
+click==8.1.7
+
+# HTTP libraries
+urllib3==2.2.3
+certifi==2024.8.30
+charset-normalizer==3.4.0
+idna==3.10
+
+# Date/time handling
+python-dateutil==2.9.0.post0
+six==1.16.0
+
+# Numeric computing
+numpy==1.26.4
+
+# Excel file handling
+et-xmlfile==1.1.0
+
+# Additional utilities
+greenlet==3.1.1
+typing_extensions==4.12.2
