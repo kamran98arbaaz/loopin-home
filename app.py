@@ -115,27 +115,11 @@ def create_app(config_name=None):
     app.secret_key = os.getenv("FLASK_SECRET_KEY", "replace-this-with-a-secure-random-string")
     app.config["APP_NAME"] = "LoopIn"
 
-    # ✅ ENHANCED DATABASE CONFIG WITH TEST SEPARATION
-    # Determine environment and set appropriate database
-    flask_env = os.getenv("FLASK_ENV", "production").lower()
-    testing_mode = os.getenv("TESTING", "false").lower() == "true"
-
-    if testing_mode or flask_env == "testing":
-        # Use separate test database
-        TEST_DATABASE_URL = os.getenv("TEST_DATABASE_URL")
-        if TEST_DATABASE_URL:
-            DATABASE_URL = TEST_DATABASE_URL
-            print("🧪 Using TEST database for testing environment")
-        else:
-            # Fallback to SQLite for tests if no test database specified
-            DATABASE_URL = "sqlite:///test_loopin.db"
-            print("🧪 Using SQLite test database (fallback)")
-    else:
-        # Use production database
-        DATABASE_URL = os.getenv("DATABASE_URL")
-        if not DATABASE_URL:
-            raise RuntimeError("DATABASE_URL not set in environment.")
-        print("🚀 Using PRODUCTION database")
+    # Simple database configuration - production only
+    DATABASE_URL = os.getenv("DATABASE_URL")
+    if not DATABASE_URL:
+        raise RuntimeError("DATABASE_URL not set in environment.")
+    print("🚀 Using database from DATABASE_URL")
 
     parsed = urlparse(DATABASE_URL)
 
@@ -154,19 +138,8 @@ def create_app(config_name=None):
     db.init_app(app)
 
     with app.app_context():
-        # ✅ SAFE DATABASE INITIALIZATION
-        # Only create tables if they don't exist and we're not in a risky environment
-        if parsed.scheme not in ("sqlite", "sqlite3"):
-            # For PostgreSQL, use migrations instead of create_all in production
-            if testing_mode or flask_env in ["development", "testing"]:
-                print("🔧 Creating database tables for development/testing")
-                db.create_all()
-            else:
-                print("🏭 Production mode: Use 'flask db upgrade' for database setup")
-        else:
-            # For SQLite (test database), always create tables
-            print("🔧 Creating SQLite database tables")
-            db.create_all()
+        # Production mode: Use migrations only
+        print("🏭 Production mode: Use 'flask db upgrade' for database setup")
 
     # Activity Logging Helper
     def log_activity(action, entity_type, entity_id, entity_title=None, details=None):
