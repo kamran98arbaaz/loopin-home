@@ -231,6 +231,9 @@ PORT=8000
 - ✅ **Post-Backup Archive Handling**: Items archived after backup creation now properly restored
 - ✅ **Memory Optimization**: Fixed Railway deployment memory issues (SIGKILL prevention)
 - ✅ **Gunicorn Configuration**: Optimized for Railway's memory constraints (60-70% memory reduction)
+- ✅ **Railway Backup System**: Replaced pg_dump with SQLAlchemy-based backup (no PostgreSQL tools required)
+- ✅ **Gevent SSL Warning**: Fixed monkey patching warning preventing RecursionError
+- ✅ **Socket.IO Notifications**: Fixed real-time notification system for Railway deployment
 
 ### Latest Features (2025)
 - ✅ **Bell Icon System**: Restored with badge and updates banner
@@ -275,6 +278,25 @@ This project is proprietary software. All rights reserved.
 - Reduced workers from 7+ to 2 (60-70% memory reduction)
 - Switched from eventlet to gevent for better memory efficiency
 - Added memory monitoring to health endpoint
+
+#### Backup System Issues
+**Issue**: Backup creation fails with "pg_dump: command not found"
+**Solution**: Railway PostgreSQL doesn't include client tools - system now uses SQLAlchemy-based backup
+
+**Issue**: Backup files are empty or corrupted
+**Solution**: New JSON-based backup format is more reliable and Railway-compatible
+
+#### Gevent SSL Warnings
+**Issue**: MonkeyPatchWarning about SSL after import
+**Solution**: Early monkey patching implemented - warning eliminated
+
+#### Socket.IO Notification Issues
+**Issue**: Real-time notifications not working on Railway
+**Solution**:
+- Session-based authentication instead of Flask-Login proxy
+- Event handlers registered at module level
+- Railway-compatible room management
+- Enhanced error handling and logging
 
 #### Backup/Restore Problems
 **Issue**: Restore operation hangs or fails

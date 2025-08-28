@@ -1,3 +1,11 @@
+# Gevent monkey patching must happen BEFORE other imports that use SSL
+try:
+    import gevent.monkey
+    gevent.monkey.patch_all()
+    print("✅ Gevent monkey patching applied early (prevents SSL warnings)")
+except ImportError:
+    print("ℹ️  Gevent not available")
+
 import os
 import time
 import uuid
@@ -1981,12 +1989,5 @@ if __name__ == "__main__":
     # Set debug based on environment variable
     debug_mode = os.getenv("FLASK_DEBUG", "False").lower() == "true"
 
-    # Use gevent for better memory efficiency on Railway
-    try:
-        import gevent.monkey
-        gevent.monkey.patch_all()
-        print("✅ Using gevent for async operations (memory-efficient)")
-    except ImportError:
-        print("ℹ️  Gevent not available, using standard threading")
-
+    print("🚀 Starting LoopIn server...")
     socketio.run(app, host="0.0.0.0", port=port, debug=debug_mode)
