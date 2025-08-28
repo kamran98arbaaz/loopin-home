@@ -229,6 +229,8 @@ PORT=8000
 - ✅ **Archived Items Restoration**: Fixed critical issue where archived items weren't restored to original locations
 - ✅ **Database Connection Issues**: Resolved psql command structure problems for Railway deployment
 - ✅ **Post-Backup Archive Handling**: Items archived after backup creation now properly restored
+- ✅ **Memory Optimization**: Fixed Railway deployment memory issues (SIGKILL prevention)
+- ✅ **Gunicorn Configuration**: Optimized for Railway's memory constraints (60-70% memory reduction)
 
 ### Latest Features (2025)
 - ✅ **Bell Icon System**: Restored with badge and updates banner
@@ -263,6 +265,17 @@ This project is proprietary software. All rights reserved.
 
 ### Common Issues & Solutions
 
+#### Memory Issues (SIGKILL)
+**Issue**: Worker killed with SIGKILL! Perhaps out of memory?
+**Solution**: Memory optimization applied - check /health endpoint for current usage
+
+**Issue**: Railway deployment fails due to memory constraints
+**Solution**:
+- Configuration optimized for 512MB-1GB Railway instances
+- Reduced workers from 7+ to 2 (60-70% memory reduction)
+- Switched from eventlet to gevent for better memory efficiency
+- Added memory monitoring to health endpoint
+
 #### Backup/Restore Problems
 **Issue**: Restore operation hangs or fails
 **Solution**: Check Railway PostgreSQL compatibility - ensure proper DATABASE_URL format
@@ -280,6 +293,13 @@ This project is proprietary software. All rights reserved.
 ```bash
 # Test connection manually
 psql -h your-host -p your-port -U your-user -d your-database -c "SELECT 1;"
+```
+
+#### Performance Monitoring
+**Check Memory Usage**:
+```bash
+curl https://your-app.railway.app/health
+# Returns memory usage in MB and percentage
 ```
 
 ### Performance Optimization

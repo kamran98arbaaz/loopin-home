@@ -386,11 +386,32 @@ def create_app(config_name=None):
     # Routes
     @app.route("/health")
     def health():
-        """Simple health check endpoint"""
+        """Enhanced health check endpoint with memory monitoring"""
         try:
             # Test database connection
             db.session.execute(text("SELECT 1"))
-            out = {"status": "ok", "db": "connected"}
+
+            # Memory usage monitoring (if psutil available)
+            memory_info = {"available": False}
+            try:
+                import psutil
+                import os
+                process = psutil.Process(os.getpid())
+                memory_mb = process.memory_info().rss / 1024 / 1024
+                memory_info = {
+                    "available": True,
+                    "usage_mb": round(memory_mb, 2),
+                    "usage_percent": round(process.memory_percent(), 2)
+                }
+            except ImportError:
+                memory_info["message"] = "psutil not available"
+
+            out = {
+                "status": "ok",
+                "db": "connected",
+                "memory": memory_info,
+                "timestamp": now_utc().isoformat()
+            }
 
             # Check Redis if configured
             redis_url = os.getenv("REDIS_URL")
@@ -408,7 +429,11 @@ def create_app(config_name=None):
 
             return jsonify(out), 200
         except Exception as e:
-            return jsonify({"status": "error", "message": str(e)}), 500
+            return jsonify({
+                "status": "error",
+                "message": str(e),
+                "timestamp": now_utc().isoformat()
+            }), 500
 
     try:
         from prometheus_client import CollectorRegistry, Gauge, generate_latest, CONTENT_TYPE_LATEST
@@ -1955,4 +1980,13 @@ if __name__ == "__main__":
     port = int(os.getenv("PORT", 8000))
     # Set debug based on environment variable
     debug_mode = os.getenv("FLASK_DEBUG", "False").lower() == "true"
+
+    # Use gevent for better memory efficiency on Railway
+    try:
+        import gevent.monkey
+        gevent.monkey.patch_all()
+        print("✅ Using gevent for async operations (memory-efficient)")
+    except ImportError:
+        print("ℹ️  Gevent not available, using standard threading")
+
     socketio.run(app, host="0.0.0.0", port=port, debug=debug_mode)
