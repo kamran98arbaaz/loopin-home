@@ -12,17 +12,14 @@ alembic==1.16.4
 
 # Web server for production
 gunicorn==21.2.0
+eventlet==0.35.2
 
-# Utilities
+# Essential utilities
 python-dotenv==1.1.1
 pytz==2025.2
 requests==2.32.4
-marshmallow==3.19.0
 
-# Optional features
-prometheus-client==0.21.1
-
-# Excel export functionality
+# Excel export functionality (optional)
 pandas==2.2.3
 openpyxl==3.1.5
 
@@ -30,14 +27,14 @@ openpyxl==3.1.5
 python-socketio==5.11.4
 python-engineio==4.10.1
 
-# Core Python utilities
+# Core Python utilities (let pip resolve these)
 Werkzeug==2.3.7
 Jinja2==3.1.4
 MarkupSafe==2.1.5
 itsdangerous==2.2.0
 click==8.1.7
 
-# HTTP libraries
+# HTTP libraries (let pip resolve these)
 urllib3==2.2.3
 certifi==2024.8.30
 charset-normalizer==3.4.0
@@ -47,10 +44,10 @@ idna==3.10
 python-dateutil==2.9.0.post0
 six==1.16.0
 
-# Numeric computing
+# Numeric computing (required by pandas)
 numpy==1.26.4
 
-# Excel file handling
+# Excel file handling (required by openpyxl)
 et-xmlfile==1.1.0
 
 # Additional utilities

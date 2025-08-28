@@ -112,34 +112,41 @@ def create_app(config_name=None):
     def load_user(user_id):
         return User.query.get(int(user_id))
 
+    # Security configuration
     app.secret_key = os.getenv("FLASK_SECRET_KEY", "replace-this-with-a-secure-random-string")
     app.config["APP_NAME"] = "LoopIn"
+    
+    # Secure session configuration
+    app.config["SESSION_COOKIE_SECURE"] = True  # Only send cookies over HTTPS
+    app.config["SESSION_COOKIE_HTTPONLY"] = True  # Prevent JavaScript access to session cookie
+    app.config["SESSION_COOKIE_SAMESITE"] = "Lax"  # CSRF protection
+    app.config["PERMANENT_SESSION_LIFETIME"] = 3600  # Session timeout in seconds
 
-    # Simple database configuration - production only
-    DATABASE_URL = os.getenv("DATABASE_URL")
-    if not DATABASE_URL:
-        raise RuntimeError("DATABASE_URL not set in environment.")
-    print("🚀 Using database from DATABASE_URL")
-
-    parsed = urlparse(DATABASE_URL)
-
-    # Support Postgres in production and sqlite for local testing
-    if parsed.scheme in ("postgresql", "postgres", "sqlite", "sqlite3"):
-        app.config["SQLALCHEMY_DATABASE_URI"] = DATABASE_URL
+    # Database configuration
+    database_url = os.getenv("DATABASE_URL")
+    if not database_url:
+        database_url = "sqlite:///loopin.db"
+        print("⚠️ DATABASE_URL not set, using SQLite by default")
     else:
+        print("Using database from DATABASE_URL")
+
+    parsed = urlparse(database_url)
+    if parsed.scheme not in ("postgresql", "postgres", "sqlite", "sqlite3"):
         raise RuntimeError(f"Unsupported DB scheme: {parsed.scheme}")
 
+    app.config["SQLALCHEMY_DATABASE_URI"] = database_url
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
-    sslmode = os.getenv("PG_SSLMODE")
-    if sslmode and parsed.scheme in ("postgresql", "postgres"):
-        app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {"connect_args": {"sslmode": sslmode}}
+    # Configure SSL for PostgreSQL if needed
+    if os.getenv("PG_SSLMODE") and parsed.scheme in ("postgresql", "postgres"):
+        app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
+            "connect_args": {"sslmode": os.getenv("PG_SSLMODE")}
+        }
 
     db.init_app(app)
 
     with app.app_context():
-        # Production mode: Use migrations only
-        print("🏭 Production mode: Use 'flask db upgrade' for database setup")
+        print("Database configured successfully")
 
     # Activity Logging Helper
     def log_activity(action, entity_type, entity_id, entity_title=None, details=None):
@@ -177,7 +184,22 @@ def create_app(config_name=None):
     def archive_update(update):
         """Archive an update before deletion"""
         try:
+            # Validate update object
+            if not update or not update.id:
+                raise ValueError("Invalid update object")
+
+            # Get archiving user
             user_id = session.get("user_id")
+            if not user_id:
+                app.logger.warning("Archiving update without user context")
+
+            # Check if already archived
+            existing_archive = ArchivedUpdate.query.get(update.id)
+            if existing_archive:
+                app.logger.warning(f"Update {update.id} already archived")
+                return True
+
+            # Create archive record
             archived_update = ArchivedUpdate(
                 id=update.id,
                 name=update.name,
@@ -187,16 +209,37 @@ def create_app(config_name=None):
                 archived_at=now_utc(),
                 archived_by=user_id
             )
+
+            # Save the archive
             db.session.add(archived_update)
+            db.session.commit()
+            
+            app.logger.info(f"Successfully archived update {update.id}")
             return True
         except Exception as e:
-            print(f"Failed to archive update: {e}")
+            db.session.rollback()
+            app.logger.error(f"Failed to archive update {update.id if update and hasattr(update, 'id') else 'unknown'}: {str(e)}")
             return False
 
     def archive_sop(sop):
         """Archive a SOP before deletion"""
         try:
+            # Validate SOP object
+            if not sop or not sop.id:
+                raise ValueError("Invalid SOP object")
+
+            # Get archiving user
             user_id = session.get("user_id")
+            if not user_id:
+                app.logger.warning("Archiving SOP without user context")
+
+            # Check if already archived
+            existing_archive = ArchivedSOPSummary.query.get(sop.id)
+            if existing_archive:
+                app.logger.warning(f"SOP {sop.id} already archived")
+                return True
+
+            # Create archive record
             archived_sop = ArchivedSOPSummary(
                 id=sop.id,
                 title=sop.title,
@@ -207,16 +250,37 @@ def create_app(config_name=None):
                 archived_at=now_utc(),
                 archived_by=user_id
             )
+
+            # Save the archive
             db.session.add(archived_sop)
+            db.session.commit()
+            
+            app.logger.info(f"Successfully archived SOP {sop.id}")
             return True
         except Exception as e:
-            print(f"Failed to archive SOP: {e}")
+            db.session.rollback()
+            app.logger.error(f"Failed to archive SOP {sop.id if sop and hasattr(sop, 'id') else 'unknown'}: {str(e)}")
             return False
 
     def archive_lesson(lesson):
         """Archive a lesson learned before deletion"""
         try:
+            # Validate lesson object
+            if not lesson or not lesson.id:
+                raise ValueError("Invalid lesson object")
+
+            # Get archiving user
             user_id = session.get("user_id")
+            if not user_id:
+                app.logger.warning("Archiving lesson without user context")
+
+            # Check if already archived
+            existing_archive = ArchivedLessonLearned.query.get(lesson.id)
+            if existing_archive:
+                app.logger.warning(f"Lesson {lesson.id} already archived")
+                return True
+
+            # Create archive record
             archived_lesson = ArchivedLessonLearned(
                 id=lesson.id,
                 title=lesson.title,
@@ -229,10 +293,16 @@ def create_app(config_name=None):
                 archived_at=now_utc(),
                 archived_by=user_id
             )
+
+            # Save the archive
             db.session.add(archived_lesson)
+            db.session.commit()
+            
+            app.logger.info(f"Successfully archived lesson {lesson.id}")
             return True
         except Exception as e:
-            print(f"Failed to archive lesson: {e}")
+            db.session.rollback()
+            app.logger.error(f"Failed to archive lesson {lesson.id if lesson and hasattr(lesson, 'id') else 'unknown'}: {str(e)}")
             return False
 
     # Auth Helpers
@@ -318,44 +388,27 @@ def create_app(config_name=None):
     def health():
         """Simple health check endpoint"""
         try:
+            # Test database connection
             db.session.execute(text("SELECT 1"))
-            return jsonify({"status": "ok", "db": "connected"}), 200
-        except Exception as e:
-            return jsonify({"status": "error", "db": "disconnected"}), 500
+            out = {"status": "ok", "db": "connected"}
 
-    @app.route("/health/detailed")
-    def health_detailed():
-        """Detailed health check with Redis and other services"""
-        out = {"db": None}
-        code = 200
-        try:
-            db.session.execute(text("SELECT 1"))
-            out["db"] = "reachable"
-        except Exception as e:
-            out["db"] = str(e)
-            code = 500
-
-        # Only check Redis if REDIS_URL is configured to avoid unnecessary delays
-        redis_url = os.getenv("REDIS_URL")
-        if redis_url:
-            try:
-                from api.updates import is_redis_healthy
+            # Check Redis if configured
+            redis_url = os.getenv("REDIS_URL")
+            if redis_url:
                 try:
-                    out["redis"] = "ok" if is_redis_healthy() else "unavailable"
-                    if out["redis"] != "ok":
-                        code = max(code, 503)
-                except Exception as re:
-                    out["redis"] = f"error: {re}"
-                    code = max(code, 500)
-            except Exception:
-                # If redis helper not available, just omit it
+                    # Simple Redis connectivity check
+                    import redis
+                    r = redis.from_url(redis_url)
+                    r.ping()
+                    out["redis"] = "connected"
+                except Exception as e:
+                    out["redis"] = f"error: {str(e)}"
+            else:
                 out["redis"] = "not_configured"
-        else:
-            out["redis"] = "not_configured"
 
-        status = "ok" if code == 200 else "error"
-        out["status"] = status
-        return jsonify(out), code
+            return jsonify(out), 200
+        except Exception as e:
+            return jsonify({"status": "error", "message": str(e)}), 500
 
     try:
         from prometheus_client import CollectorRegistry, Gauge, generate_latest, CONTENT_TYPE_LATEST
@@ -770,35 +823,48 @@ def create_app(config_name=None):
     def delete_update(update_id):
         update = Update.query.get(update_id)
         current = inject_current_user()["current_user"]
+        
+        # Prepare response data
+        response = {"success": False, "message": ""}
+        
         if not update:
-            flash("⚠️ Update not found.")
+            response["message"] = "⚠️ Update not found."
+            status_code = 404
+        elif update.name.strip().lower() != current.display_name.strip().lower():
+            response["message"] = "🚫 Not authorized to delete."
+            status_code = 403
+        else:
+            # Capture details before deletion
+            entity_title = f"Update: {update.message[:50]}..."
+
+            try:
+                # Archive the update before deletion
+                if archive_update(update):
+                    db.session.delete(update)
+                    db.session.commit()
+                    response["success"] = True
+                    response["message"] = "✅ Update deleted and archived."
+                    status_code = 200
+
+                    # Log activity after successful deletion
+                    log_activity('deleted', 'update', update_id, entity_title)
+                else:
+                    response["message"] = "⚠️ Failed to archive update. Deletion cancelled for safety."
+                    status_code = 500
+
+            except Exception as e:
+                db.session.rollback()
+                response["message"] = "❌ Deletion failed."
+                status_code = 500
+                logger.error(f"Failed to delete update: {e}")
+
+        # Handle both AJAX and form submissions
+        is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+        if is_ajax:
+            return jsonify(response), status_code
+        else:
+            flash(response["message"])
             return redirect(url_for("show_updates"))
-
-        if update.name.strip().lower() != current.display_name.strip().lower():
-            flash("🚫 Not authorized to delete.")
-            return redirect(url_for("show_updates"))
-
-        # Capture details before deletion
-        entity_title = f"Update: {update.message[:50]}..."
-
-        try:
-            # Archive the update before deletion
-            if archive_update(update):
-                db.session.delete(update)
-                db.session.commit()
-                flash("✅ Update deleted and archived.")
-
-                # Log activity after successful deletion
-                log_activity('deleted', 'update', update_id, entity_title)
-            else:
-                flash("⚠️ Failed to archive update. Deletion cancelled for safety.")
-
-        except Exception as e:
-            db.session.rollback()
-            flash("❌ Deletion failed.")
-            logger.error(f"Failed to delete update: {e}")
-
-        return redirect(url_for("show_updates"))
             
     @app.route("/register", methods=["GET", "POST"])
     def register():
@@ -1257,8 +1323,23 @@ def create_app(config_name=None):
         download = request.args.get('download', 'false').lower() == 'true'
 
         if not download:
-            # Show export page with download button
-            return render_template('export_readlogs.html', app_name=app.config["APP_NAME"])
+            try:
+                # Get summary stats for the export page
+                total_logs = ReadLog.query.count()
+                unique_readers = db.session.query(func.count(func.distinct(ReadLog.user_id))).scalar()
+                date_range = db.session.query(
+                    func.min(ReadLog.timestamp).label('start'),
+                    func.max(ReadLog.timestamp).label('end')
+                ).first()
+
+                return render_template('export_readlogs.html',
+                                 app_name=app.config["APP_NAME"],
+                                 total_logs=total_logs,
+                                 unique_readers=unique_readers,
+                                 date_range=date_range)
+            except Exception as e:
+                flash(f"❌ Error getting export statistics: {str(e)}", "error")
+                return redirect(url_for('home'))
 
         # If download=true, proceed with file generation and download
         try:

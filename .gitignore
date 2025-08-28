@@ -2,6 +2,7 @@
 __pycache__/
 *.py[cod]
 *.egg-info/
+.pytest_cache/
 
 # Virtual environments
 .venv/
@@ -10,12 +11,39 @@ venv/
 
 # dotenv - secrets
 .env
+.env.local
+.env.production
 
 # Editor/IDE settings
 .vscode/
 .idea/
 *.swp
 
+# Flask
 .flaskenv
 flaskenv
-.env
+instance/
+*.db
+
+# Logs
+*.log
+backup.log
+
+# Coverage
+.coverage
+htmlcov/
+
+# Backups (should not be in version control)
+backups/
+*.dump
+*.sql
+
+# Generated files
+loopin_index.txt
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Railway
+railway.json.backup

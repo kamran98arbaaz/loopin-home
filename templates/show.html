@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}Updates – {{ app_name }}{% endblock %}
+{% block title %}Updates - {{ app_name }}{% endblock %}
 
 {% block head %}
   <style>
@@ -763,11 +763,13 @@
   // Delete update functionality
   function deleteUpdate(updateId) {
     if (confirm('Are you sure you want to delete this update? This action cannot be undone.')) {
-      fetch(`/api/updates/${updateId}`, {
-        method: 'DELETE',
+      fetch(`/delete/${updateId}`, {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest'
         },
+        credentials: 'same-origin'
       })
       .then(response => {
         if (response.ok) {
@@ -866,12 +868,35 @@
     const now = new Date();
     const twentyFourHoursAgo = new Date(now.getTime() - (24 * 60 * 60 * 1000));
 
+    console.log('Highlighting recent updates...');
+
     document.querySelectorAll('.update-card[data-timestamp]').forEach(card => {
-      const timestamp = new Date(card.dataset.timestamp);
-      if (timestamp > twentyFourHoursAgo) {
-        card.classList.add('recent');
+      const timestampStr = card.dataset.timestamp;
+      console.log('Processing card with timestamp:', timestampStr);
+
+      if (!timestampStr || timestampStr === '') {
+        console.log('Skipping card with empty timestamp');
+        return;
+      }
+
+      try {
+        const timestamp = new Date(timestampStr);
+        if (isNaN(timestamp.getTime())) {
+          console.log('Invalid timestamp format:', timestampStr);
+          return;
+        }
+
+        console.log('Comparing:', timestamp, 'with', twentyFourHoursAgo);
+        if (timestamp > twentyFourHoursAgo) {
+          card.classList.add('recent');
+          console.log('Added recent class to card');
+        }
+      } catch (error) {
+        console.error('Error parsing timestamp:', timestampStr, error);
       }
     });
+
+    console.log('Recent updates highlighting completed');
   }
 
   // Update cards now use CSS-only hover effects for better performance

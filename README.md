@@ -57,14 +57,15 @@ LoopIn is a comprehensive team communication platform designed to streamline upd
 3. **Set up environment variables:**
    ```bash
    # Create a .env file or set environment variables
-   DATABASE_URL=postgresql://username:password@localhost/loopin
-   SECRET_KEY=your-secret-key-here
+   FLASK_SECRET_KEY=your-secret-key-here
    FLASK_ENV=development
+   # Optional: Configure PostgreSQL
+   # DATABASE_URL=postgresql://username:password@localhost/loopin
    ```
 
 4. **Initialize the database:**
    ```bash
-   python init_db.py
+   flask db upgrade
    ```
 
 5. **Run the application:**
@@ -81,59 +82,61 @@ LoopIn is a comprehensive team communication platform designed to streamline upd
 
 | Variable | Description | Required | Example |
 |----------|-------------|----------|---------|
-| `DATABASE_URL` | PostgreSQL connection string | Yes | `postgresql://user:pass@localhost/loopin` |
-| `TEST_DATABASE_URL` | Test database connection string | No | `postgresql://user:pass@localhost/loopin_test` |
+| `DATABASE_URL` | Database URL (PostgreSQL/SQLite) | No | `postgresql://user:pass@localhost/loopin` |
 | `FLASK_SECRET_KEY` | Flask secret key for sessions | Yes | `your-super-secret-key` |
-| `FLASK_ENV` | Environment (development/production/testing) | No | `production` |
-| `TESTING` | Enable testing mode (true/false) | No | `false` |
+| `FLASK_ENV` | Environment (development/production) | No | `production` |
 | `PORT` | Port number (default: 8000) | No | `8000` |
 
 ### Database Setup
 
-The application uses PostgreSQL with SQLAlchemy ORM. Database migrations are handled through Flask-Migrate.
+The application uses SQLAlchemy ORM with support for PostgreSQL and SQLite. If `DATABASE_URL` is not set, it will default to using a local SQLite database.
+
+Database migrations are handled through Flask-Migrate:
 
 ```bash
-# Create migration
-flask db migrate -m "Description"
-
-# Apply migration
+# Initialize database schema
 flask db upgrade
 ```
 
+### Backup & Restore System
+
+LoopIn includes a comprehensive backup and restore system optimized for Railway PostgreSQL:
+
+#### Features
+- **Complete Database Backup**: Full PostgreSQL database dumps with metadata
+- **Archived Items Handling**: Properly backs up and restores archived content
+- **Railway Optimized**: Uses proper psql/pg_restore command structures
+- **Progress Monitoring**: Real-time progress indicators during restore
+- **Data Integrity**: Automatic verification and cleanup after restore
+
+#### Backup Operations
+```bash
+# Create manual backup
+python -c "from backup_system import DatabaseBackupSystem; bs = DatabaseBackupSystem(); bs.create_backup('manual')"
+
+# Create scheduled backup
+python scheduled_backup.py daily
+```
+
+#### Restore Operations
+```bash
+# Restore from backup (handled through web interface)
+# Access: /backup in admin panel
+```
+
+#### Backup Files
+- **Format**: PostgreSQL SQL dumps (.sql) and custom format (.dump)
+- **Metadata**: JSON files with backup information and archived items count
+- **Location**: `backups/` directory with automatic cleanup
+
 ### Testing Setup
 
-**🔒 IMPORTANT: Tests now use a separate database to protect production data!**
+Run tests with the standard pytest command:
+```bash
+python -m pytest
+```
 
-1. **Create test database:**
-   ```bash
-   # PostgreSQL
-   createdb loopin_test
-
-   # Or use SQLite (automatic fallback)
-   # No setup needed - will create test_loopin.db automatically
-   ```
-
-2. **Set test environment variables:**
-   ```bash
-   # Option 1: Set in .env file
-   TEST_DATABASE_URL=postgresql://username:password@localhost/loopin_test
-
-   # Option 2: Set for single test run
-   TESTING=true python -m pytest
-   ```
-
-3. **Run tests safely:**
-   ```bash
-   # Using the test helper
-   python test_config.py run
-
-   # Or manually
-   TESTING=true python -m pytest
-
-   # Or set environment and run
-   export TESTING=true
-   python -m pytest
-   ```
+This will use a temporary SQLite database for testing to protect production data.
 
 ## 🏗️ Architecture
 
@@ -161,12 +164,27 @@ flask db upgrade
 
 ### Railway Deployment
 
-This application is optimized for Railway deployment:
+This application is fully optimized for Railway deployment with recent critical fixes:
 
+#### Deployment Steps
 1. **Connect Repository**: Link your Git repository to Railway
 2. **Environment Variables**: Set required environment variables in Railway dashboard
 3. **Database**: Add PostgreSQL service in Railway
 4. **Deploy**: Railway will automatically deploy on push to main branch
+
+#### Required Environment Variables
+```bash
+DATABASE_URL=postgresql://user:password@host:port/database
+FLASK_SECRET_KEY=your-super-secret-key-here
+FLASK_ENV=production
+PORT=8000
+```
+
+#### Recent Railway Fixes (2025-08-28)
+- ✅ **Database Connection**: Fixed psql command structure for Railway PostgreSQL
+- ✅ **Backup/Restore**: Optimized for Railway's PostgreSQL environment
+- ✅ **Timeout Handling**: Proper timeout management for hosted databases
+- ✅ **Connection Pooling**: Optimized database connection settings
 
 ### Production Checklist
 
@@ -176,6 +194,9 @@ This application is optimized for Railway deployment:
 - [x] Error handling implemented
 - [x] Security measures in place
 - [x] Performance optimized
+- [x] **Railway PostgreSQL compatibility** ✅
+- [x] **Backup/restore system functional** ✅
+- [x] **Archived items restoration working** ✅
 
 ## 📱 Usage
 
@@ -200,7 +221,14 @@ This application is optimized for Railway deployment:
 - **Input Validation**: Comprehensive input sanitization
 - **Authentication**: Proper user authentication and authorization
 
-## 🎯 Recent Updates
+## 🎯 Recent Updates & Bug Fixes
+
+### Critical Bug Fixes (2025-08-28)
+- ✅ **JavaScript 24hr Highlighting**: Fixed timestamp parsing and highlighting logic for recent updates
+- ✅ **Backup/Restore System Overhaul**: Complete rewrite with Railway PostgreSQL compatibility
+- ✅ **Archived Items Restoration**: Fixed critical issue where archived items weren't restored to original locations
+- ✅ **Database Connection Issues**: Resolved psql command structure problems for Railway deployment
+- ✅ **Post-Backup Archive Handling**: Items archived after backup creation now properly restored
 
 ### Latest Features (2025)
 - ✅ **Bell Icon System**: Restored with badge and updates banner
@@ -210,6 +238,14 @@ This application is optimized for Railway deployment:
 - ✅ **Banner Optimization**: Limited to 3 updates with "View All" option
 - ✅ **Clean Architecture**: Removed unnecessary files and dependencies
 - ✅ **Production Ready**: Comprehensive testing and optimization
+
+### Backup & Restore System v2.0
+- ✅ **Comprehensive Metadata**: Backup files now include archived items information
+- ✅ **Exact Restoration**: Archived items automatically restored to original tables
+- ✅ **Railway Optimized**: Proper psql/pg_restore command structures for hosted PostgreSQL
+- ✅ **Fast Performance**: 2-3 minute timeouts with progress indicators
+- ✅ **Data Integrity**: Complete verification and cleanup after restore
+- ✅ **Error Diagnostics**: Detailed logging for troubleshooting
 
 ## 🤝 Contributing
 
@@ -223,10 +259,45 @@ This application is optimized for Railway deployment:
 
 This project is proprietary software. All rights reserved.
 
+## 🔧 Troubleshooting
+
+### Common Issues & Solutions
+
+#### Backup/Restore Problems
+**Issue**: Restore operation hangs or fails
+**Solution**: Check Railway PostgreSQL compatibility - ensure proper DATABASE_URL format
+
+**Issue**: Archived items not restored to original locations
+**Solution**: Use backup files created with v2.0+ of the backup system (includes metadata)
+
+#### JavaScript Issues
+**Issue**: 24-hour update highlighting not working
+**Solution**: Check browser console for timestamp parsing errors - ensure proper date format
+
+#### Database Connection Issues
+**Issue**: Connection timeouts or authentication failures
+**Solution**:
+```bash
+# Test connection manually
+psql -h your-host -p your-port -U your-user -d your-database -c "SELECT 1;"
+```
+
+### Performance Optimization
+
+#### Database
+- Connection pooling configured for Railway PostgreSQL
+- Optimized queries with proper indexing
+- Background job processing for heavy operations
+
+#### Frontend
+- Lazy loading for large content
+- Optimized asset delivery
+- Responsive design for all devices
+
 ## 📞 Support
 
 For support and questions, please contact the development team.
 
 ---
 
-**LoopIn 2025** - Streamlining team communication and knowledge management.
+**LoopIn 2025** - Streamlining team communication and knowledge management with enterprise-grade reliability.

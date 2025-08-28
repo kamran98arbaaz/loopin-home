@@ -1,0 +1,60 @@
+"""Application factory configuration"""
+
+import os
+from typing import Optional, Dict, Any
+
+class Config:
+    """Base configuration."""
+    APP_NAME = "LoopIn"
+    SECRET_KEY = os.getenv("FLASK_SECRET_KEY", "replace-this-with-a-secure-random-string")
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
+    SQLALCHEMY_ENGINE_OPTIONS = {
+        "pool_pre_ping": True,      # Enable connection health checks
+        "pool_recycle": 300,        # Recycle connections after 5 minutes
+        "pool_timeout": 30,         # Connection timeout after 30 seconds
+        "max_overflow": 15,         # Maximum number of connections to overflow
+        "pool_size": 30,           # Base number of connections in the pool
+        "echo": False,             # Don't log all SQL statements in production
+        "echo_pool": False         # Don't log connection pool operations
+    }
+    SESSION_COOKIE_SECURE = True
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = "Lax"
+    PERMANENT_SESSION_LIFETIME = 3600  # 1 hour
+    REMEMBER_COOKIE_SECURE = True      # Secure flag for remember cookie
+    REMEMBER_COOKIE_HTTPONLY = True    # HTTP-only flag for remember cookie
+    REMEMBER_COOKIE_SAMESITE = "Lax"   # CSRF protection for remember cookie
+    REMEMBER_COOKIE_DURATION = 2592000 # 30 days in seconds
+    JSON_SORT_KEYS = False            # Better performance in production
+    JSONIFY_PRETTYPRINT_REGULAR = False  # Don't prettify JSON in production
+    MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB max file size
+    UPLOAD_FOLDER = "uploads"
+
+class ProductionConfig(Config):
+    """Production configuration."""
+    ENV = "production"
+    DEBUG = False
+    TESTING = False
+    SQLALCHEMY_DATABASE_URI = os.getenv("DATABASE_URL")
+
+class DevelopmentConfig(Config):
+    """Development configuration."""
+    ENV = "development"
+    DEBUG = True
+    TESTING = False
+    SQLALCHEMY_DATABASE_URI = os.getenv("DATABASE_URL", "sqlite:///loopin_dev.db")
+
+class TestingConfig(Config):
+    """Testing configuration."""
+    ENV = "testing"
+    DEBUG = True
+    TESTING = True
+    SQLALCHEMY_DATABASE_URI = "sqlite:///:memory:"
+    WTF_CSRF_ENABLED = False
+
+config = {
+    "development": DevelopmentConfig,
+    "testing": TestingConfig,
+    "production": ProductionConfig,
+    "default": ProductionConfig
+}
