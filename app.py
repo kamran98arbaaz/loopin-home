@@ -1,12 +1,14 @@
+import os
+
 # Gevent monkey patching must happen BEFORE other imports that use SSL
 try:
     import gevent.monkey
     gevent.monkey.patch_all()
-    print("✅ Gevent monkey patching applied early (prevents SSL warnings)")
+    if os.getenv("FLASK_ENV") == "development":
+        print("✅ Gevent monkey patching applied early (prevents SSL warnings)")
 except ImportError:
-    print("ℹ️  Gevent not available")
-
-import os
+    if os.getenv("FLASK_ENV") == "development":
+        print("INFO: Gevent not available")
 import time
 import uuid
 import pytz
@@ -30,7 +32,6 @@ from role_decorators import admin_required, editor_required, writer_required, de
 from timezone_utils import UTC, IST, now_utc, to_utc, to_ist, format_ist, ensure_timezone, is_within_hours, get_hours_ago
 from io import BytesIO
 import sys
-import os
 import subprocess
 from pathlib import Path
 
@@ -104,8 +105,14 @@ def create_app(config_name=None):
         from api.socketio import bp as socketio_bp, init_socketio
         app.register_blueprint(socketio_bp)
         init_socketio(socketio, app)
-    except Exception:
+        if os.getenv("FLASK_ENV") == "development":
+            print("SUCCESS: Socket.IO blueprint registered successfully")
+    except Exception as e:
         # Socket.IO registration should not break app startup if something is off
+        if os.getenv("FLASK_ENV") == "development":
+            print(f"WARNING: Socket.IO blueprint registration failed: {e}")
+            import traceback
+            print(f"WARNING: Full error: {traceback.format_exc()}")
         pass
     
     # Register search API blueprint
@@ -123,20 +130,47 @@ def create_app(config_name=None):
     # Security configuration
     app.secret_key = os.getenv("FLASK_SECRET_KEY", "replace-this-with-a-secure-random-string")
     app.config["APP_NAME"] = "LoopIn"
-    
-    # Secure session configuration
-    app.config["SESSION_COOKIE_SECURE"] = True  # Only send cookies over HTTPS
+
+    # CORS configuration for Socket.IO
+    app.config["CORS_HEADERS"] = "Content-Type"
+
+    # Secure session configuration - adjust for Railway
+    is_production = os.getenv("RAILWAY_ENVIRONMENT") == "production" or os.getenv("FLASK_ENV") == "production"
+    if is_production:
+        app.config["SESSION_COOKIE_SECURE"] = True  # Only send cookies over HTTPS
+    else:
+        app.config["SESSION_COOKIE_SECURE"] = False  # Allow HTTP for development
     app.config["SESSION_COOKIE_HTTPONLY"] = True  # Prevent JavaScript access to session cookie
     app.config["SESSION_COOKIE_SAMESITE"] = "Lax"  # CSRF protection
     app.config["PERMANENT_SESSION_LIFETIME"] = 3600  # Session timeout in seconds
+
+    # Railway-specific configurations
+    if os.getenv("RAILWAY_ENVIRONMENT"):
+        app.config["SERVER_NAME"] = None  # Disable SERVER_NAME for Railway
+        app.config["PREFERRED_URL_SCHEME"] = "https"  # Force HTTPS on Railway
+
+        # Additional Railway configurations for Socket.IO
+        app.config["RAILWAY_STATIC_URL"] = os.getenv("RAILWAY_STATIC_URL", "")
+
+        # Log Railway environment info (only in development)
+        if os.getenv("FLASK_ENV") == "development":
+            print(f"🚂 Railway Environment: {os.getenv('RAILWAY_ENVIRONMENT')}")
+            print(f"🚂 Railway Project ID: {os.getenv('RAILWAY_PROJECT_ID', 'Not set')}")
+            print(f"🚂 Railway Service ID: {os.getenv('RAILWAY_SERVICE_ID', 'Not set')}")
+            print(f"🚂 Railway Public Domain: {os.getenv('RAILWAY_PUBLIC_DOMAIN', 'Not set')}")
+            print(f"🚂 Railway WebSocket Support: {os.getenv('RAILWAY_WEBSOCKET_SUPPORT', 'Not set')}")
+            print(f"🚂 Railway Git Commit SHA: {os.getenv('RAILWAY_GIT_COMMIT_SHA', 'Not set')}")
+            print(f"🚂 Railway Git Branch: {os.getenv('RAILWAY_GIT_BRANCH', 'Not set')}")
 
     # Database configuration
     database_url = os.getenv("DATABASE_URL")
     if not database_url:
         database_url = "sqlite:///loopin.db"
-        print("⚠️ DATABASE_URL not set, using SQLite by default")
+        if os.getenv("FLASK_ENV") == "development":
+            print("⚠️ DATABASE_URL not set, using SQLite by default")
     else:
-        print("Using database from DATABASE_URL")
+        if os.getenv("FLASK_ENV") == "development":
+            print("Using database from DATABASE_URL")
 
     parsed = urlparse(database_url)
     if parsed.scheme not in ("postgresql", "postgres", "sqlite", "sqlite3"):
@@ -154,7 +188,8 @@ def create_app(config_name=None):
     db.init_app(app)
 
     with app.app_context():
-        print("Database configured successfully")
+        if os.getenv("FLASK_ENV") == "development":
+            print("Database configured successfully")
 
     # Activity Logging Helper
     def log_activity(action, entity_type, entity_id, entity_title=None, details=None):
@@ -186,7 +221,8 @@ def create_app(config_name=None):
             db.session.commit()
         except Exception as e:
             # Don't let activity logging break the main functionality
-            print(f"Activity logging failed: {e}")
+            if os.getenv("FLASK_ENV") == "development":
+                print(f"Activity logging failed: {e}")
 
     # Archive Helper Functions
     def archive_update(update):
@@ -341,6 +377,11 @@ def create_app(config_name=None):
         role_info = get_user_role_info(user)
         return dict(user_role=role_info)
 
+    @app.context_processor
+    def inject_now_utc():
+        """Make now_utc function available in templates"""
+        return dict(now_utc=now_utc)
+
     @app.template_filter('to_ist')
     def to_ist_filter(utc_datetime):
         """Convert UTC datetime to IST for display"""
@@ -403,7 +444,6 @@ def create_app(config_name=None):
             memory_info = {"available": False}
             try:
                 import psutil
-                import os
                 process = psutil.Process(os.getpid())
                 memory_mb = process.memory_info().rss / 1024 / 1024
                 memory_info = {
@@ -773,6 +813,9 @@ def create_app(config_name=None):
 
                 # Broadcast the new update via Socket.IO
                 try:
+                    if os.getenv("FLASK_ENV") == "development":
+                        logger.info(f"🔄 Broadcasting new update via Socket.IO - ID: {new_update.id}")
+                        print(f"🔄 Broadcasting new update via Socket.IO - ID: {new_update.id}")
                     from api.socketio import broadcast_update
                     update_data = {
                         'id': new_update.id,
@@ -781,10 +824,18 @@ def create_app(config_name=None):
                         'message': new_update.message,
                         'timestamp': new_update.timestamp.isoformat()
                     }
+                    if os.getenv("FLASK_ENV") == "development":
+                        logger.info(f"📦 Update data prepared: {update_data}")
+                        print(f"📦 Update data prepared for broadcasting")
                     broadcast_update(update_data, selected_process)
+                    if os.getenv("FLASK_ENV") == "development":
+                        logger.info(f"✅ Broadcast function called successfully for update {new_update.id}")
+                        print(f"✅ Broadcast function called successfully for update {new_update.id}")
                 except Exception as e:
                     # Socket.IO broadcasting failure shouldn't break the posting
-                    print(f"Socket.IO broadcast failed: {e}")
+                    logger.error(f"❌ Socket.IO broadcast failed: {e}")
+                    if os.getenv("FLASK_ENV") == "development":
+                        print(f"❌ Socket.IO broadcast failed: {e}")
 
             except Exception:
                 db.session.rollback()
@@ -1062,7 +1113,8 @@ def create_app(config_name=None):
                         'timestamp': now_utc().isoformat()
                     })
                 except Exception as e:
-                    print(f"Socket.IO broadcast failed: {e}")
+                    if os.getenv("FLASK_ENV") == "development":
+                        print(f"Socket.IO broadcast failed: {e}")
 
                 return redirect(url_for("list_sop_summaries"))
             except Exception as e:
@@ -1199,7 +1251,8 @@ def create_app(config_name=None):
                         'timestamp': now_utc().isoformat()
                     })
                 except Exception as e:
-                    print(f"Socket.IO broadcast failed: {e}")
+                    if os.getenv("FLASK_ENV") == "development":
+                        print(f"Socket.IO broadcast failed: {e}")
 
                 return redirect(url_for("list_lessons_learned"))
             except Exception as e:
@@ -1979,6 +2032,58 @@ def create_app(config_name=None):
 
         return redirect(url_for('archives_page'))
 
+    # Add cache control for static files to prevent 304 caching issues
+    @app.after_request
+    def add_cache_control(response):
+        if request.path.startswith('/static/'):
+            # Don't cache JS and CSS files in development
+            if app.config.get('DEBUG', False) or os.getenv('FLASK_ENV') != 'production':
+                if request.path.endswith(('.js', '.css')):
+                    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+                    response.headers['Pragma'] = 'no-cache'
+                    response.headers['Expires'] = '0'
+
+        # Add CORS headers for Socket.IO
+        if request.path.startswith('/socket.io/'):
+            origin = request.headers.get('Origin', '*')
+            response.headers['Access-Control-Allow-Origin'] = origin
+            response.headers['Access-Control-Allow-Credentials'] = 'true'
+            response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
+            response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Requested-With'
+            response.headers['Access-Control-Max-Age'] = '86400'  # 24 hours
+
+            # Handle preflight requests
+            if request.method == 'OPTIONS':
+                response.status_code = 200
+
+        # Add Railway-specific headers (only essential ones in production)
+        if os.getenv('RAILWAY_ENVIRONMENT'):
+            is_production = os.getenv("RAILWAY_ENVIRONMENT") == "production" or os.getenv("FLASK_ENV") == "production"
+            is_development = os.getenv("FLASK_ENV") == "development" or not is_production
+
+            # Essential headers for all environments
+            response.headers['X-Railway-Environment'] = os.getenv('RAILWAY_ENVIRONMENT')
+            response.headers['X-SocketIO-Support'] = 'enabled'
+            response.headers['X-WebSocket-Support'] = 'enabled'
+            response.headers['X-Transport-Support'] = 'websocket,polling'
+            response.headers['X-Server-Version'] = 'LoopIn-v1.0'
+
+            # Add debug headers only in development
+            if is_development:
+                response.headers['X-Railway-Project-ID'] = os.getenv('RAILWAY_PROJECT_ID', '')
+                response.headers['X-Railway-Service-ID'] = os.getenv('RAILWAY_SERVICE_ID', '')
+                response.headers['X-Railway-Public-Domain'] = os.getenv('RAILWAY_PUBLIC_DOMAIN', '')
+                response.headers['X-Railway-Git-Commit-SHA'] = os.getenv('RAILWAY_GIT_COMMIT_SHA', '')
+                response.headers['X-Railway-Git-Branch'] = os.getenv('RAILWAY_GIT_BRANCH', '')
+                response.headers['X-Debug-Mode'] = str(debug_mode).lower()
+                response.headers['X-Timestamp'] = now_utc().isoformat()
+                response.headers['X-Status'] = 'healthy'
+                response.headers['X-Connection-Status'] = 'ready'
+                response.headers['X-SocketIO-Version'] = '4.7.2'
+                response.headers['X-Debug-Info'] = 'Socket.IO debugging enabled'
+
+        return response
+
     return app
 
 # Create app instance for gunicorn
@@ -1989,5 +2094,35 @@ if __name__ == "__main__":
     # Set debug based on environment variable
     debug_mode = os.getenv("FLASK_DEBUG", "False").lower() == "true"
 
-    print("🚀 Starting LoopIn server...")
-    socketio.run(app, host="0.0.0.0", port=port, debug=debug_mode)
+    if os.getenv("FLASK_ENV") == "development":
+        print("🚀 Starting LoopIn server...")
+        print(f"🔌 Socket.IO configured for port {port}")
+        print(f"🌐 Server will be available at: http://0.0.0.0:{port}")
+        print(f"🔧 Debug mode: {debug_mode}")
+
+    try:
+        # Use socketio.run for proper Socket.IO server startup
+        if os.getenv("FLASK_ENV") == "development":
+            print("🚀 Starting Socket.IO server...")
+        socketio.run(
+            app,
+            host="0.0.0.0",
+            port=port,
+            debug=debug_mode,
+            log_output=debug_mode,
+            use_reloader=debug_mode
+        )
+    except Exception as e:
+        if os.getenv("FLASK_ENV") == "development":
+            print(f"❌ Failed to start Socket.IO server: {e}")
+            import traceback
+            print(f"❌ Full Socket.IO error: {traceback.format_exc()}")
+        # Fallback to regular Flask app if Socket.IO fails
+        if os.getenv("FLASK_ENV") == "development":
+            print("🔄 Falling back to regular Flask app...")
+        try:
+            app.run(host="0.0.0.0", port=port, debug=debug_mode)
+        except Exception as fallback_error:
+            if os.getenv("FLASK_ENV") == "development":
+                print(f"❌ Even fallback failed: {fallback_error}")
+            raise

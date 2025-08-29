@@ -17,11 +17,23 @@ class DatabaseBackupSystem:
             raise ValueError("DATABASE_URL environment variable not set")
 
         self.parsed_url = urlparse(self.database_url)
-        self.backup_dir = Path("backups")
-        self.backup_dir.mkdir(exist_ok=True)
-        self.is_railway = self._detect_railway_environment()
 
-        print(f"✅ Database backup system initialized for {'Railway' if self.is_railway else 'standard'} environment")
+        # Use configurable backup directory with fallback
+        backup_dir_env = os.getenv("BACKUP_DIR", "backups")
+        self.backup_dir = Path(backup_dir_env)
+        self.backup_dir.mkdir(exist_ok=True)
+
+        # Environment detection
+        self.is_railway = self._detect_railway_environment()
+        self.is_production = os.getenv("RAILWAY_ENVIRONMENT") == "production" or os.getenv("FLASK_ENV") == "production"
+        self.is_development = os.getenv("FLASK_ENV") == "development" or not self.is_production
+
+        # Load backup configuration
+        self._load_backup_config()
+
+        # Log only in development or for important events
+        if self.is_development:
+            print(f"[OK] Database backup system initialized for {'Railway' if self.is_railway else 'standard'} environment")
 
     def _detect_railway_environment(self):
         """Detect if we're running on Railway"""
@@ -30,6 +42,23 @@ class DatabaseBackupSystem:
             os.getenv("RAILWAY_ENVIRONMENT") is not None or
             os.getenv("RAILWAY_PROJECT_ID") is not None
         )
+
+    def _load_backup_config(self):
+        """Load backup configuration with environment-specific settings"""
+        # Default configuration
+        self.max_backup_size = int(os.getenv("MAX_BACKUP_SIZE", "524288000"))  # 500MB default
+        self.backup_retention_days = int(os.getenv("BACKUP_RETENTION_DAYS", "30"))
+        self.compress_backups = os.getenv("COMPRESS_BACKUPS", "true").lower() == "true"
+        self.validate_backups = os.getenv("VALIDATE_BACKUPS", "true").lower() == "true"
+
+        # Production-specific settings
+        if self.is_production:
+            # More conservative settings for production
+            self.backup_retention_days = min(self.backup_retention_days, 90)  # Max 90 days in production
+            self.max_backup_size = min(self.max_backup_size, 1073741824)  # Max 1GB in production
+        else:
+            # More permissive settings for development
+            self.backup_retention_days = max(self.backup_retention_days, 7)  # Min 7 days in development
     
     def create_backup(self, backup_type="manual"):
         """Create a database backup using SQLAlchemy (Railway-compatible)"""
@@ -38,7 +67,8 @@ class DatabaseBackupSystem:
             backup_filename = f"loopin_backup_{backup_type}_{timestamp}.json"
             backup_path = self.backup_dir / backup_filename
 
-            print(f"📦 Creating Railway-compatible backup: {backup_path}")
+            if self.is_development:
+                print(f"📦 Creating Railway-compatible backup: {backup_path}")
 
             # Collect all data using SQLAlchemy
             backup_data = {
@@ -46,10 +76,13 @@ class DatabaseBackupSystem:
                     "backup_type": backup_type,
                     "timestamp": timestamp,
                     "created_at": now_utc().isoformat(),
-                    "backup_version": "3.0",  # Railway-compatible version
+                    "backup_version": "3.1",  # Updated Railway-compatible version
                     "format": "sqlalchemy_json",
                     "database_url": self._mask_database_url(),
-                    "railway_compatible": True
+                    "railway_compatible": True,
+                    "environment": "production" if self.is_production else "development",
+                    "compression_enabled": self.compress_backups,
+                    "max_backup_size": self.max_backup_size
                 },
                 "data": {}
             }
@@ -83,24 +116,34 @@ class DatabaseBackupSystem:
             with open(backup_path, 'w', encoding='utf-8') as f:
                 json.dump(backup_data, f, indent=2, ensure_ascii=False, default=str)
 
+            # Check backup file size
+            file_size = backup_path.stat().st_size
+            if file_size > self.max_backup_size:
+                if self.is_development:
+                    print(f"⚠️  Backup size ({file_size} bytes) exceeds maximum allowed size ({self.max_backup_size} bytes)")
+                backup_path.unlink()  # Delete the oversized backup
+                return None
+
             # Verify backup file
-            if backup_path.exists() and backup_path.stat().st_size > 0:
-                print(f"✅ Backup created successfully: {backup_path}")
-                print(f"   📊 Total records: {total_records}")
-                print(f"   📁 File size: {backup_path.stat().st_size} bytes")
+            if backup_path.exists() and file_size > 0:
+                if self.is_development:
+                    print(f"✅ Backup created successfully: {backup_path}")
+                    print(f"   📊 Total records: {total_records}")
+                    print(f"   📁 File size: {file_size} bytes")
 
                 # Create metadata file
                 metadata = {
                     "backup_type": backup_type,
                     "timestamp": timestamp,
-                    "file_size": backup_path.stat().st_size,
+                    "file_size": file_size,
                     "created_at": now_utc().isoformat(),
                     "format": "sqlalchemy_json",
                     "database_url": self._mask_database_url(),
                     "total_records": total_records,
                     "railway_compatible": True,
-                    "backup_version": "3.0",
-                    "restore_instructions": "Use the Railway-compatible restore method"
+                    "backup_version": "3.1",
+                    "restore_instructions": "Use the Railway-compatible restore method",
+                    "environment": "production" if self.is_production else "development"
                 }
 
                 metadata_path = backup_path.with_suffix('.json')
@@ -109,7 +152,8 @@ class DatabaseBackupSystem:
 
                 return backup_path
             else:
-                print("❌ Backup file was not created or is empty")
+                if self.is_development:
+                    print("❌ Backup file was not created or is empty")
                 return None
 
         except Exception as e:
@@ -439,15 +483,53 @@ class DatabaseBackupSystem:
             return False
     
     def cleanup_old_backups(self):
-        """Clean up old backups"""
-        # Keep last 10 backups
-        backups = self.list_backups()
-        if len(backups) > 10:
-            for backup in backups[10:]:
+        """Clean up old backups based on retention policy"""
+        try:
+            from datetime import datetime, timedelta
+
+            # Get all backup files
+            backup_files = list(self.backup_dir.glob("*.json"))
+            current_time = now_utc()
+
+            # Filter out metadata files (they have .json extension but are not the main backup files)
+            main_backup_files = [f for f in backup_files if not f.name.endswith('.json.json')]
+
+            backups_to_delete = []
+
+            for backup_file in main_backup_files:
                 try:
-                    backup['file'].unlink()
-                    metadata_file = backup['file'].with_suffix('.json')
+                    # Check file age
+                    file_age_days = (current_time - datetime.fromtimestamp(backup_file.stat().st_mtime, tz=current_time.tzinfo)).days
+
+                    if file_age_days > self.backup_retention_days:
+                        backups_to_delete.append(backup_file)
+                except Exception as e:
+                    if self.is_development:
+                        print(f"⚠️  Error checking backup file {backup_file}: {e}")
+                    continue
+
+            # Delete old backups
+            deleted_count = 0
+            for backup_file in backups_to_delete:
+                try:
+                    # Delete main backup file
+                    backup_file.unlink()
+
+                    # Delete associated metadata file
+                    metadata_file = backup_file.with_suffix('.json')
                     if metadata_file.exists():
                         metadata_file.unlink()
-                except:
-                    pass
+
+                    deleted_count += 1
+                    if self.is_development:
+                        print(f"🗑️  Deleted old backup: {backup_file.name}")
+                except Exception as e:
+                    if self.is_development:
+                        print(f"⚠️  Error deleting backup {backup_file}: {e}")
+
+            if self.is_development and deleted_count > 0:
+                print(f"✅ Cleaned up {deleted_count} old backups (retention: {self.backup_retention_days} days)")
+
+        except Exception as e:
+            if self.is_development:
+                print(f"❌ Error during backup cleanup: {e}")

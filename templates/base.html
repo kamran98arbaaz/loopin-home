@@ -1110,11 +1110,11 @@
 
 
   <!-- Scripts -->
-  <script src="{{ url_for('static', filename='js/guest_read.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/notifications.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/guest_read.js') }}?v={{ config.APP_NAME | lower | replace(' ', '') }}_{{ now_utc().timestamp() | int }}"></script>
+  <script src="{{ url_for('static', filename='js/notifications.js') }}?v={{ config.APP_NAME | lower | replace(' ', '') }}_{{ now_utc().timestamp() | int }}"></script>
 
-  <script src="{{ url_for('static', filename='js/enhanced_search.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/updatesBanner.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/enhanced_search.js') }}?v={{ config.APP_NAME | lower | replace(' ', '') }}_{{ now_utc().timestamp() | int }}"></script>
+  <script src="{{ url_for('static', filename='js/updatesBanner.js') }}?v={{ config.APP_NAME | lower | replace(' ', '') }}_{{ now_utc().timestamp() | int }}"></script>
 
 
 

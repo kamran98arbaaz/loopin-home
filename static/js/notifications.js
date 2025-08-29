@@ -5,23 +5,83 @@ let unreadCount = 0;
 
 // Initialize Socket.IO connection
 function initializeSocketIO() {
+    console.log('🔌 Initializing Socket.IO connection...');
+
     if (typeof io !== 'undefined') {
-        socket = io();
-        
+        console.log('✅ Socket.IO library available, creating connection...');
+
+        // Get the current host for Socket.IO connection
+        const protocol = window.location.protocol;
+        const host = window.location.host;
+        const socketUrl = `${protocol}//${host}`;
+
+        console.log('🔗 Connecting to Socket.IO at:', socketUrl);
+
+        socket = io(socketUrl, {
+            transports: ['polling', 'websocket'], // Try polling first, then websocket
+            timeout: 10000,
+            forceNew: true,
+            reconnection: true,
+            reconnectionAttempts: 5,
+            reconnectionDelay: 1000,
+            maxReconnectionAttempts: 5,
+            upgrade: true, // Allow transport upgrade
+            rememberUpgrade: true, // Remember transport upgrade
+            secure: window.location.protocol === 'https:', // Match protocol
+            rejectUnauthorized: false // For development
+        });
+        console.log('🔧 Socket.IO connection options set');
+
         // Connection events
         socket.on('connect', function() {
-            console.log('Connected to real-time updates');
+            console.log('✅ Connected to real-time updates - Socket ID:', socket.id);
+            console.log('🔗 Connection details:', {
+                connected: socket.connected,
+                disconnected: socket.disconnected,
+                transport: socket.io.engine.transport.name
+            });
             // Request initial unread count
+            console.log('📊 Requesting initial unread count...');
             socket.emit('get_unread_count');
         });
-        
+
         socket.on('disconnect', function() {
-            console.log('Disconnected from real-time updates');
+            console.log('❌ Disconnected from real-time updates');
+        });
+
+        socket.on('connect_error', function(error) {
+            console.error('🚫 Socket.IO connection error:', error);
+            console.error('Error details:', {
+                type: error.type,
+                description: error.description,
+                context: error.context
+            });
+        });
+
+        socket.on('connect_timeout', function() {
+            console.error('⏰ Socket.IO connection timeout');
+        });
+
+        socket.on('reconnect', function(attemptNumber) {
+            console.log('🔄 Socket.IO reconnected after', attemptNumber, 'attempts');
+        });
+
+        socket.on('reconnect_attempt', function(attemptNumber) {
+            console.log('🔄 Socket.IO reconnection attempt', attemptNumber);
+        });
+
+        socket.on('reconnect_error', function(error) {
+            console.error('🚫 Socket.IO reconnection error:', error);
+        });
+
+        socket.on('reconnect_failed', function() {
+            console.error('❌ Socket.IO reconnection failed permanently');
         });
         
         // Handle real-time updates
         socket.on('new_update', function(data) {
-            console.log('New update received:', data);
+            console.log('🔔 New update received via Socket.IO:', data);
+            console.log('📦 Update details - ID:', data.id, 'Name:', data.name, 'Process:', data.process);
 
             addNotification({
                 type: 'new_update',
@@ -32,11 +92,13 @@ function initializeSocketIO() {
                 unread: true
             });
 
+            console.log('🔊 Playing notification sound...');
             playNotificationSound();
 
             // Enhanced toast with process details and permanent display
             const processInfo = data.process ? ` in **${data.process}**` : '';
             const message = `🔔 **NEW UPDATE POSTED!**${processInfo} by ${data.name || 'Unknown'}. Check it out now!`;
+            console.log('🍞 Showing toast notification:', message);
             showToast(message, 'permanent'); // Permanent notification with close button
         });
         
@@ -47,20 +109,27 @@ function initializeSocketIO() {
         
         // Handle notifications
         socket.on('notification', function(data) {
-            console.log('Notification received:', data);
+            console.log('📬 Notification received via Socket.IO:', data);
+            console.log('📋 Notification type:', data.type, 'Message:', data.message);
+
             addNotification({
                 ...data,
                 timestamp: data.timestamp || new Date().toISOString(),
                 unread: true
             });
+
+            console.log('🔊 Playing notification sound for notification...');
             playNotificationSound();
 
             // Show enhanced toast for different types
             if (data.type === 'new_sop') {
+                console.log('📋 Showing SOP notification toast');
                 showToast('📋 ' + data.message, 'permanent');
             } else if (data.type === 'new_lesson') {
+                console.log('🎓 Showing lesson notification toast');
                 showToast('🎓 ' + data.message, 'permanent');
             } else {
+                console.log('🔔 Showing generic notification toast');
                 showToast('🔔 ' + data.message, 'permanent');
             }
         });
@@ -81,7 +150,19 @@ function initializeSocketIO() {
         });
         
         // Subscribe to updates
+        console.log('📡 Subscribing to real-time updates...');
         socket.emit('subscribe_to_updates');
+
+        // Handle subscription confirmation
+        socket.on('subscribed', function(data) {
+            console.log('✅ Successfully subscribed to updates:', data);
+        });
+
+        socket.on('connected', function(data) {
+            console.log('🔗 Socket.IO connection confirmed:', data);
+        });
+    } else {
+        console.error('❌ Socket.IO library not available! Check if CDN is loading properly.');
     }
 }
 
@@ -464,17 +545,55 @@ function initializeSoundToggle() {
     }
 }
 
+// Test Socket.IO connection
+function testSocketConnection() {
+    console.log('🧪 Testing Socket.IO connection...');
+
+    if (!socket) {
+        console.error('❌ Socket.IO not initialized');
+        return;
+    }
+
+    if (!socket.connected) {
+        console.error('❌ Socket.IO not connected');
+        return;
+    }
+
+    console.log('📡 Sending test message...');
+    socket.emit('test_connection', {
+        message: 'Test from browser',
+        timestamp: new Date().toISOString()
+    });
+
+    // Listen for test response
+    socket.once('test_response', function(data) {
+        console.log('✅ Test response received:', data);
+        if (data.error) {
+            console.error('❌ Test failed:', data.error);
+        } else {
+            console.log('🎉 Socket.IO connection test successful!');
+        }
+    });
+
+    // Timeout for test
+    setTimeout(() => {
+        console.log('⏰ Test timeout - no response received');
+    }, 5000);
+}
+
 // Export functions for global access
 window.notifications = {
     toggle: toggleNotifications,
     markAllAsRead: markAllAsRead,
     add: addNotification,
-    getUnreadCount: () => unreadCount
+    getUnreadCount: () => unreadCount,
+    testConnection: testSocketConnection
 };
 
 // Make functions globally available
 window.toggleNotifications = toggleNotifications;
 window.markAllAsRead = markAllAsRead;
 window.toggleNotificationSound = toggleNotificationSound;
+window.testSocketConnection = testSocketConnection;
 
 

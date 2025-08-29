@@ -18,7 +18,7 @@ os.makedirs(BACKUP_TEMP_DIR, exist_ok=True)
 
 # Backup file patterns
 BACKUP_FILE_PREFIX = "loopin_backup_"
-BACKUP_FILE_SUFFIX = ".pgdump"
+BACKUP_FILE_SUFFIX = ".json"  # Updated to match actual backup format
 
 # Notification settings
 BACKUP_NOTIFICATION_EMAILS = os.getenv("BACKUP_NOTIFICATION_EMAILS", "").split(",")

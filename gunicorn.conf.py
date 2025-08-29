@@ -10,6 +10,19 @@ if cpu_count > 1:
 else:
     workers = 1
 
+# Environment-specific configuration
+is_production = os.getenv("RAILWAY_ENVIRONMENT") == "production" or os.getenv("FLASK_ENV") == "production"
+if is_production:
+    # Production optimizations
+    loglevel = 'warning'  # Less verbose in production
+    accesslog = None  # Disable access log in production
+    errorlog = None  # Disable error log in production (use Railway logs)
+else:
+    # Development settings
+    loglevel = 'info'
+    accesslog = '-'
+    errorlog = '-'
+
 worker_class = 'gevent'  # Use gevent for better memory efficiency
 threads = 1  # Reduce threads
 timeout = 30  # Shorter timeout to free memory faster
