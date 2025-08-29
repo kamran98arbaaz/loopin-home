@@ -18,7 +18,7 @@ function initializeSocketIO() {
         console.log('🔗 Connecting to Socket.IO at:', socketUrl);
 
         socket = io(socketUrl, {
-            transports: ['polling', 'websocket'], // Try polling first, then websocket
+            transports: ['websocket', 'polling'], // Prioritize WebSocket for Railway
             timeout: 20000, // Increased timeout
             forceNew: false, // Don't force new connection
             reconnection: true,
@@ -33,8 +33,6 @@ function initializeSocketIO() {
             path: '/socket.io', // Explicit Socket.IO path
             query: {}, // No additional query parameters
             extraHeaders: {}, // No extra headers
-            // Force polling for Railway compatibility
-            forcePolling: false, // Let it try websocket first
             // Better error handling
             randomizationFactor: 0.5,
             // Railway-specific connection settings
@@ -43,10 +41,16 @@ function initializeSocketIO() {
             // Add connection stability options
             closeOnBeforeunload: false, // Prevent connection drops
             autoConnect: true, // Auto-connect on page load
+            // Socket.IO v4 compatibility settings
+            forceBase64: false, // Use binary when possible
+            timestampRequests: true, // Add timestamps to prevent caching
+            timestampParam: 't', // Timestamp parameter name
             // Add Railway-specific headers for debugging
             auth: {
                 timestamp: Date.now(),
-                userAgent: navigator.userAgent.substring(0, 100)
+                userAgent: navigator.userAgent.substring(0, 100),
+                protocol: window.location.protocol,
+                host: window.location.host
             }
         });
         console.log('🔧 Socket.IO connection options set');
@@ -521,7 +525,7 @@ function forcePollingFallback() {
     const socketUrl = `${protocol}//${host}`;
 
     socket = io(socketUrl, {
-        transports: ['polling'], // Force polling only
+        transports: ['polling'], // Force polling only as fallback
         timeout: 20000,
         forceNew: true,
         reconnection: true,
@@ -533,7 +537,16 @@ function forcePollingFallback() {
         pingTimeout: 60000,
         pingInterval: 25000,
         closeOnBeforeunload: false,
-        autoConnect: true
+        autoConnect: true,
+        // Polling-specific settings
+        forceBase64: false,
+        timestampRequests: true,
+        timestampParam: 't',
+        // Railway-specific polling optimizations
+        extraHeaders: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'Cache-Control': 'no-cache'
+        }
     });
 
     // Re-attach all event handlers

@@ -14,7 +14,15 @@ is_production = os.getenv("RAILWAY_ENVIRONMENT") == "production" or os.getenv("F
 is_development = os.getenv("FLASK_ENV") == "development" or not is_production
 
 socketio = SocketIO(
-    cors_allowed_origins="*",  # Allow all origins for Socket.IO compatibility
+    # Railway-optimized CORS configuration
+    cors_allowed_origins=[
+        "https://loopin-home-production.up.railway.app",
+        "https://*.up.railway.app",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000",
+        "http://localhost:5000",
+        "http://127.0.0.1:5000"
+    ],
     logger=is_development,  # Only enable logging in development
     engineio_logger=is_development,  # Only enable engineio logging in development
     ping_timeout=60,
@@ -29,10 +37,10 @@ socketio = SocketIO(
     manage_session=False,  # Disable Flask session management for Railway
     message_queue=None,  # Use in-memory queue for single instance
     channel='socketio',  # Channel name for message queue
-    # Additional Railway-compatible settings
-    async_mode='threading',  # Force threading mode for Railway
+    # Socket.IO v5 compatible settings
+    async_mode='threading',  # Use threading for Railway compatibility
     path='/socket.io',  # Explicit Socket.IO path
-    transports=['polling', 'websocket'],  # Explicit transport order
+    transports=['websocket', 'polling'],  # Prioritize WebSocket for Railway
     # Enhanced stability configurations for Railway
     close_timeout=60,  # Longer close timeout for stability
     heartbeat_interval=25,  # Heartbeat interval
@@ -45,5 +53,20 @@ socketio = SocketIO(
     monitor_clients=True,  # Monitor client connections
     # Railway optimization settings
     always_connect=False,  # Don't force connections
-    jsonp=False  # Disable JSONP for security
+    jsonp=False,  # Disable JSONP for security
+    # Socket.IO v4 compatibility
+    engineio_path='/socket.io',  # Explicit engine.io path
+    engineio_ping_timeout=60,
+    engineio_ping_interval=25,
+    engineio_max_http_buffer_size=1000000,
+    engineio_allow_upgrades=True,
+    engineio_cookie=None,
+    engineio_cors_allowed_origins=[
+        "https://loopin-home-production.up.railway.app",
+        "https://*.up.railway.app",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000",
+        "http://localhost:5000",
+        "http://127.0.0.1:5000"
+    ]
 )

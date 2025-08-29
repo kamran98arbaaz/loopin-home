@@ -2,7 +2,7 @@
 Flask==2.3.3
 Flask-Login==0.6.3
 Flask-Migrate==4.1.0
-Flask-SocketIO==5.3.6
+Flask-SocketIO==4.3.2
 Flask-SQLAlchemy==3.1.1
 
 # Database (memory-optimized)
@@ -23,9 +23,10 @@ requests==2.32.4
 pandas==2.1.4  # Downgraded for memory
 openpyxl==3.1.2  # Downgraded for memory
 
-# Socket.IO for real-time features (optimized)
-python-socketio==5.11.4
-python-engineio==4.10.1
+# Socket.IO for real-time features (compatible with client v4.7.2)
+python-socketio==5.10.0
+python-engineio==4.12.2
+eventlet==0.33.3
 
 # Core Python utilities (let pip resolve these)
 Werkzeug==2.3.7
