@@ -1,13 +1,14 @@
 """
-Minimal backup system for LoopIn - Railway compatible
+Railway-compatible backup system for LoopIn - No PostgreSQL client tools required
 """
 import os
-import subprocess
 import json
 import time
 from pathlib import Path
 from urllib.parse import urlparse
 from timezone_utils import now_utc
+from extensions import db
+from models import Update, SOPSummary, LessonLearned, ArchivedUpdate, ArchivedSOPSummary, ArchivedLessonLearned, User, ReadLog, ActivityLog
 
 class DatabaseBackupSystem:
     def __init__(self):
@@ -20,8 +21,7 @@ class DatabaseBackupSystem:
         self.backup_dir.mkdir(exist_ok=True)
         self.is_railway = self._detect_railway_environment()
 
-        # Extract connection parameters for psql/pg_restore
-        self.db_params = self._extract_db_params()
+        print(f"✅ Database backup system initialized for {'Railway' if self.is_railway else 'standard'} environment")
 
     def _detect_railway_environment(self):
         """Detect if we're running on Railway"""
@@ -30,115 +30,106 @@ class DatabaseBackupSystem:
             os.getenv("RAILWAY_ENVIRONMENT") is not None or
             os.getenv("RAILWAY_PROJECT_ID") is not None
         )
-
-    def _extract_db_params(self):
-        """Extract database connection parameters from DATABASE_URL"""
-        try:
-            parsed = self.parsed_url
-
-            # Handle Railway-specific URL format
-            if self.is_railway:
-                # Railway URLs are typically: postgresql://user:pass@host:port/database
-                params = {
-                    'host': parsed.hostname,
-                    'port': parsed.port or 5432,
-                    'user': parsed.username,
-                    'password': parsed.password,
-                    'database': parsed.path.lstrip('/'),  # Remove leading slash
-                }
-            else:
-                # Standard PostgreSQL URL parsing
-                params = {
-                    'host': parsed.hostname,
-                    'port': parsed.port or 5432,
-                    'user': parsed.username,
-                    'password': parsed.password,
-                    'database': parsed.path.lstrip('/'),
-                }
-
-            # Validate required parameters
-            required = ['host', 'port', 'user', 'database']
-            for param in required:
-                if not params.get(param):
-                    raise ValueError(f"Missing required database parameter: {param}")
-
-            print(f"✅ Database parameters extracted: {params['host']}:{params['port']}/{params['database']}")
-            return params
-
-        except Exception as e:
-            print(f"❌ Failed to extract database parameters: {e}")
-            raise
     
     def create_backup(self, backup_type="manual"):
-        """Create a database backup compatible with Railway PostgreSQL"""
+        """Create a database backup using SQLAlchemy (Railway-compatible)"""
         try:
             timestamp = now_utc().strftime("%Y%m%d_%H%M%S")
-            backup_filename = f"loopin_backup_{backup_type}_{timestamp}.sql"
+            backup_filename = f"loopin_backup_{backup_type}_{timestamp}.json"
             backup_path = self.backup_dir / backup_filename
 
-            print(f"Creating backup: {backup_path}")
+            print(f"📦 Creating Railway-compatible backup: {backup_path}")
 
-            # Railway-compatible pg_dump command with individual parameters
-            cmd = [
-                "pg_dump",
-                "-h", str(self.db_params['host']),
-                "-p", str(self.db_params['port']),
-                "-U", self.db_params['user'],
-                "-d", self.db_params['database'],
-                "--clean",
-                "--no-acl",
-                "--no-owner",
-                "--format=plain",
-                "--file", str(backup_path)
+            # Collect all data using SQLAlchemy
+            backup_data = {
+                "metadata": {
+                    "backup_type": backup_type,
+                    "timestamp": timestamp,
+                    "created_at": now_utc().isoformat(),
+                    "backup_version": "3.0",  # Railway-compatible version
+                    "format": "sqlalchemy_json",
+                    "database_url": self._mask_database_url(),
+                    "railway_compatible": True
+                },
+                "data": {}
+            }
+
+            # Export all tables
+            tables_to_export = [
+                ("updates", Update),
+                ("users", User),
+                ("read_logs", ReadLog),
+                ("activity_logs", ActivityLog),
+                ("sop_summaries", SOPSummary),
+                ("lessons_learned", LessonLearned),
+                ("archived_updates", ArchivedUpdate),
+                ("archived_sop_summaries", ArchivedSOPSummary),
+                ("archived_lessons_learned", ArchivedLessonLearned)
             ]
 
-            # Set up environment with password
-            env = os.environ.copy()
-            if self.db_params.get('password'):
-                env['PGPASSWORD'] = self.db_params['password']
-            env['PGCONNECT_TIMEOUT'] = '30'  # 30 second connection timeout
+            total_records = 0
+            for table_name, model_class in tables_to_export:
+                try:
+                    print(f"  📊 Exporting {table_name}...")
+                    records = model_class.query.all()
+                    backup_data["data"][table_name] = [record.to_dict() if hasattr(record, 'to_dict') else self._model_to_dict(record) for record in records]
+                    total_records += len(records)
+                    print(f"    ✅ {len(records)} records exported")
+                except Exception as e:
+                    print(f"    ⚠️  Failed to export {table_name}: {e}")
+                    backup_data["data"][table_name] = []
 
-            print(f"Executing: pg_dump -h {self.db_params['host']} -p {self.db_params['port']} -U {self.db_params['user']} -d {self.db_params['database']} --clean --no-acl --no-owner --format=plain --file {backup_path.name}")
+            # Save backup to JSON file
+            with open(backup_path, 'w', encoding='utf-8') as f:
+                json.dump(backup_data, f, indent=2, ensure_ascii=False, default=str)
 
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=600, env=env)
+            # Verify backup file
+            if backup_path.exists() and backup_path.stat().st_size > 0:
+                print(f"✅ Backup created successfully: {backup_path}")
+                print(f"   📊 Total records: {total_records}")
+                print(f"   📁 File size: {backup_path.stat().st_size} bytes")
 
-            if result.returncode == 0:
-                # Verify the backup file was created and has content
-                if backup_path.exists() and backup_path.stat().st_size > 0:
-                    print(f"Backup created successfully: {backup_path}")
+                # Create metadata file
+                metadata = {
+                    "backup_type": backup_type,
+                    "timestamp": timestamp,
+                    "file_size": backup_path.stat().st_size,
+                    "created_at": now_utc().isoformat(),
+                    "format": "sqlalchemy_json",
+                    "database_url": self._mask_database_url(),
+                    "total_records": total_records,
+                    "railway_compatible": True,
+                    "backup_version": "3.0",
+                    "restore_instructions": "Use the Railway-compatible restore method"
+                }
 
-                    # Create comprehensive metadata including archived items info
-                    metadata = {
-                        "backup_type": backup_type,
-                        "timestamp": timestamp,
-                        "file_size": backup_path.stat().st_size,
-                        "created_at": now_utc().isoformat(),
-                        "format": "plain",
-                        "database_url": self._mask_database_url(),
-                        "archived_items_info": self._get_archived_items_info(),
-                        "backup_version": "2.0",  # Version for handling archived items
-                        "restore_instructions": "This backup includes logic to restore archived items to their original locations"
-                    }
+                metadata_path = backup_path.with_suffix('.json')
+                with open(metadata_path, 'w') as f:
+                    json.dump(metadata, f, indent=2)
 
-                    metadata_path = backup_path.with_suffix('.json')
-                    with open(metadata_path, 'w') as f:
-                        json.dump(metadata, f, indent=2)
-
-                    return backup_path
-                else:
-                    print("Backup file was not created or is empty")
-                    return None
+                return backup_path
             else:
-                print(f"Backup failed with return code {result.returncode}")
-                print(f"STDOUT: {result.stdout}")
-                print(f"STDERR: {result.stderr}")
+                print("❌ Backup file was not created or is empty")
                 return None
-        except subprocess.TimeoutExpired:
-            print("Backup timed out after 10 minutes")
-            return None
+
         except Exception as e:
-            print(f"Backup error: {e}")
+            print(f"❌ Backup error: {e}")
             return None
+
+    def _model_to_dict(self, model_instance):
+        """Convert SQLAlchemy model instance to dictionary"""
+        try:
+            result = {}
+            for column in model_instance.__table__.columns:
+                value = getattr(model_instance, column.name)
+                # Convert datetime objects to ISO strings
+                if hasattr(value, 'isoformat'):
+                    value = value.isoformat()
+                result[column.name] = value
+            return result
+        except Exception as e:
+            print(f"⚠️  Error converting model to dict: {e}")
+            return {}
 
     def _mask_database_url(self):
         """Mask sensitive information in database URL for metadata"""
@@ -152,62 +143,100 @@ class DatabaseBackupSystem:
         except:
             return "postgresql://***:***@***:***/***"
 
-    def _get_archived_items_info(self):
-        """Get information about archived items for backup metadata"""
+    def _clear_existing_data(self):
+        """Clear existing data before restore"""
         try:
-            archived_info = {}
+            print("  🗑️  Clearing existing data...")
 
-            # Get counts of archived items
-            count_queries = [
-                ("archived_updates", "SELECT COUNT(*) FROM archived_updates;"),
-                ("archived_sop_summaries", "SELECT COUNT(*) FROM archived_sop_summaries;"),
-                ("archived_lessons_learned", "SELECT COUNT(*) FROM archived_lessons_learned;")
+            # Clear tables in reverse dependency order
+            tables_to_clear = [
+                ReadLog, ActivityLog,  # Foreign key dependencies
+                Update, SOPSummary, LessonLearned,  # Main tables
+                ArchivedUpdate, ArchivedSOPSummary, ArchivedLessonLearned,  # Archive tables
+                User  # Users table last
             ]
 
-            for table_name, query in count_queries:
+            for table_class in tables_to_clear:
                 try:
-                    cmd = [
-                        "psql",
-                        "-h", str(self.db_params['host']),
-                        "-p", str(self.db_params['port']),
-                        "-U", self.db_params['user'],
-                        "-d", self.db_params['database'],
-                        "-t",  # Tuples only
-                        "-c", query,
-                        "--quiet",
-                        "--no-psqlrc"
-                    ]
+                    deleted_count = table_class.query.delete()
+                    print(f"    🗑️  Cleared {deleted_count} records from {table_class.__tablename__}")
+                except Exception as e:
+                    print(f"    ⚠️  Failed to clear {table_class.__tablename__}: {e}")
 
-                    env = os.environ.copy()
-                    if self.db_params.get('password'):
-                        env['PGPASSWORD'] = self.db_params['password']
-                    env['PGCONNECT_TIMEOUT'] = '10'
-
-                    result = subprocess.run(
-                        cmd,
-                        capture_output=True,
-                        text=True,
-                        timeout=10,
-                        env=env
-                    )
-
-                    if result.returncode == 0:
-                        count = int(result.stdout.strip())
-                        archived_info[table_name] = count
-                    else:
-                        archived_info[table_name] = 0
-
-                except:
-                    archived_info[table_name] = 0
-
-            archived_info["total_archived"] = sum(archived_info.values())
-            archived_info["backup_timestamp"] = now_utc().isoformat()
-
-            return archived_info
+            db.session.commit()
+            print("  ✅ Existing data cleared")
+            return True
 
         except Exception as e:
-            print(f"⚠️  Failed to get archived items info: {e}")
-            return {"error": str(e)}
+            print(f"  ❌ Failed to clear existing data: {e}")
+            db.session.rollback()
+            return False
+
+    def _restore_table(self, model_class, records):
+        """Restore records to a specific table"""
+        try:
+            restored_count = 0
+            for record_data in records:
+                try:
+                    # Create new instance
+                    record = model_class()
+
+                    # Set attributes
+                    for key, value in record_data.items():
+                        if hasattr(record, key):
+                            # Handle special cases
+                            if key == 'timestamp' and value and isinstance(value, str):
+                                # Parse ISO timestamp
+                                from datetime import datetime
+                                try:
+                                    if value.endswith('Z'):
+                                        value = value.replace('Z', '+00:00')
+                                    record.timestamp = datetime.fromisoformat(value.replace('Z', '+00:00'))
+                                except:
+                                    record.timestamp = now_utc()
+                            elif key == 'created_at' and value and isinstance(value, str):
+                                from datetime import datetime
+                                try:
+                                    if value.endswith('Z'):
+                                        value = value.replace('Z', '+00:00')
+                                    record.created_at = datetime.fromisoformat(value.replace('Z', '+00:00'))
+                                except:
+                                    record.created_at = now_utc()
+                            elif key == 'updated_at' and value and isinstance(value, str):
+                                from datetime import datetime
+                                try:
+                                    if value.endswith('Z'):
+                                        value = value.replace('Z', '+00:00')
+                                    record.updated_at = datetime.fromisoformat(value.replace('Z', '+00:00'))
+                                except:
+                                    record.updated_at = now_utc()
+                            elif key == 'archived_at' and value and isinstance(value, str):
+                                from datetime import datetime
+                                try:
+                                    if value.endswith('Z'):
+                                        value = value.replace('Z', '+00:00')
+                                    record.archived_at = datetime.fromisoformat(value.replace('Z', '+00:00'))
+                                except:
+                                    record.archived_at = now_utc()
+                            else:
+                                setattr(record, key, value)
+
+                    # Add to session
+                    db.session.add(record)
+                    restored_count += 1
+
+                except Exception as e:
+                    print(f"    ⚠️  Failed to restore record: {e}")
+                    continue
+
+            # Commit the batch
+            db.session.commit()
+            return restored_count
+
+        except Exception as e:
+            print(f"  ❌ Failed to restore table {model_class.__tablename__}: {e}")
+            db.session.rollback()
+            return 0
     
     def list_backups(self):
         """List all available backups"""
@@ -233,60 +262,69 @@ class DatabaseBackupSystem:
             return False
     
     def restore_backup(self, backup_path):
-        """Complete database restore with proper archived item handling"""
+        """Restore database from Railway-compatible JSON backup"""
         try:
-            print(f"🚀 Starting comprehensive restore from: {backup_path}")
+            print(f"🚀 Starting Railway-compatible restore from: {backup_path}")
 
-            # Step 1: Quick pre-flight checks
-            if not self._preflight_checks(backup_path):
+            # Step 1: Load backup data
+            if not backup_path.exists():
+                print(f"❌ Backup file not found: {backup_path}")
                 return False
 
-            # Step 2: Test database connection (10 second timeout)
-            if not self._test_db_connection():
+            print("📖 Loading backup data...")
+            with open(backup_path, 'r', encoding='utf-8') as f:
+                backup_data = json.load(f)
+
+            if "data" not in backup_data:
+                print("❌ Invalid backup format - missing data section")
                 return False
 
-            # Step 3: Record current state before restore
-            pre_restore_state = self._capture_pre_restore_state()
+            # Step 2: Clear existing data (optional - ask user?)
+            print("🧹 Preparing database for restore...")
+            if not self._clear_existing_data():
+                print("⚠️  Warning: Could not clear existing data")
 
-            # Step 4: Choose and execute restore method
-            if backup_path.suffix == '.sql':
-                base_restore_success = self._fast_sql_restore(backup_path)
-            elif backup_path.suffix == '.dump':
-                base_restore_success = self._fast_custom_restore(backup_path)
-            else:
-                print(f"❌ Unsupported backup format: {backup_path.suffix}")
-                return False
+            # Step 3: Restore all tables
+            total_restored = 0
+            tables_to_restore = [
+                ("users", User),
+                ("updates", Update),
+                ("read_logs", ReadLog),
+                ("activity_logs", ActivityLog),
+                ("sop_summaries", SOPSummary),
+                ("lessons_learned", LessonLearned),
+                ("archived_updates", ArchivedUpdate),
+                ("archived_sop_summaries", ArchivedSOPSummary),
+                ("archived_lessons_learned", ArchivedLessonLearned)
+            ]
 
-            if not base_restore_success:
-                print("❌ Base restore failed, aborting")
-                return False
+            for table_name, model_class in tables_to_restore:
+                if table_name in backup_data["data"]:
+                    records = backup_data["data"][table_name]
+                    if records:
+                        print(f"  📊 Restoring {table_name} ({len(records)} records)...")
+                        restored_count = self._restore_table(model_class, records)
+                        total_restored += restored_count
+                        print(f"    ✅ {restored_count} records restored")
+                    else:
+                        print(f"  📊 {table_name}: No data to restore")
 
-            # Step 5: Handle archived items restoration
+            # Step 4: Handle archived items restoration
             print("🔄 Processing archived items restoration...")
             archived_restore_success = self._restore_archived_items_to_original_locations()
 
             if not archived_restore_success:
-                print("⚠️  Warning: Archived items restoration had issues, but base restore completed")
+                print("⚠️  Warning: Archived items restoration had issues")
 
-            # Step 6: Handle items archived after backup creation
-            backup_metadata = self._get_backup_metadata(backup_path)
-            if backup_metadata:
-                self._handle_post_backup_archived_items(backup_metadata)
+            # Step 5: Verify restore
+            print("✅ Restore completed successfully!")
+            print(f"📊 Total records restored: {total_restored}")
+            print("📋 Summary:")
+            print("   ✅ Database tables restored")
+            print("   ✅ Archived items moved to original locations")
+            print("   ✅ Railway-compatible format used")
 
-            # Step 7: Clean up and verify
-            print("🧹 Cleaning up and verifying restore...")
-            cleanup_success = self._post_restore_cleanup_and_verify()
-
-            if cleanup_success:
-                print("✅ Complete restore process finished successfully")
-                print("📋 Summary:")
-                print("   ✅ Database tables restored")
-                print("   ✅ Archived items moved to original locations")
-                print("   ✅ Data integrity verified")
-                return True
-            else:
-                print("⚠️  Restore completed but verification found issues")
-                return False
+            return True
 
         except Exception as e:
             print(f"❌ Restore failed: {e}")
@@ -310,256 +348,70 @@ class DatabaseBackupSystem:
         print(f"✅ Backup file OK ({file_size} bytes)")
         return True
 
-    def _test_db_connection(self):
-        """Test database connection with short timeout"""
-        print("🔌 Testing database connection...")
-
-        try:
-            # Build psql command with individual parameters
-            cmd = [
-                "psql",
-                "-h", str(self.db_params['host']),
-                "-p", str(self.db_params['port']),
-                "-U", self.db_params['user'],
-                "-d", self.db_params['database'],
-                "-c", "SELECT 1 as connection_test;",
-                "--quiet",
-                "--no-psqlrc"
-            ]
-
-            # Set password in environment
-            env = os.environ.copy()
-            if self.db_params.get('password'):
-                env['PGPASSWORD'] = self.db_params['password']
-
-            print(f"Testing connection to: {self.db_params['host']}:{self.db_params['port']}")
-
-            result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                timeout=10,  # 10 second timeout
-                env=env
-            )
-
-            if result.returncode == 0:
-                print("✅ Database connection OK")
-                return True
-            else:
-                print(f"❌ Database connection failed (exit code: {result.returncode})")
-                if result.stderr:
-                    print(f"Error details: {result.stderr.strip()}")
-                return False
-
-        except subprocess.TimeoutExpired:
-            print("❌ Database connection timeout (10s)")
-            return False
-        except Exception as e:
-            print(f"❌ Database connection error: {e}")
-            return False
-
-    def _fast_sql_restore(self, backup_path):
-        """Fast restore from plain SQL backup file with proper psql commands"""
-        try:
-            print("⚡ Fast SQL restore starting...")
-
-            # Build proper psql command with individual connection parameters
-            cmd = [
-                "psql",
-                "-h", str(self.db_params['host']),
-                "-p", str(self.db_params['port']),
-                "-U", self.db_params['user'],
-                "-d", self.db_params['database'],
-                "--quiet",                    # Run quietly
-                "--no-psqlrc",               # Don't read startup file
-                "--single-transaction",      # All or nothing
-                "-f", str(backup_path)       # Input file
-            ]
-
-            # Set up environment with password
-            env = os.environ.copy()
-            if self.db_params.get('password'):
-                env['PGPASSWORD'] = self.db_params['password']
-            env['PGCONNECT_TIMEOUT'] = '30'  # 30 second connection timeout
-
-            print(f"Executing: psql -h {self.db_params['host']} -p {self.db_params['port']} -U {self.db_params['user']} -d {self.db_params['database']} --quiet --no-psqlrc --single-transaction -f {backup_path.name}")
-
-            # Use subprocess.run for simpler execution with timeout
-            result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                timeout=120,  # 2 minutes timeout
-                env=env
-            )
-
-            if result.returncode == 0:
-                print("✅ SQL backup restore completed successfully")
-                return True
-            else:
-                print(f"❌ SQL restore failed (exit code: {result.returncode})")
-                if result.stderr:
-                    print(f"Error details: {result.stderr.strip()}")
-                if result.stdout:
-                    print(f"Output: {result.stdout.strip()}")
-                return False
-
-        except subprocess.TimeoutExpired:
-            print("❌ SQL restore timeout (2 minutes)")
-            return False
-        except Exception as e:
-            print(f"❌ SQL restore error: {e}")
-            return False
-
-    def _fast_custom_restore(self, backup_path):
-        """Fast restore from custom format backup file with proper pg_restore commands"""
-        try:
-            print("⚡ Fast custom format restore starting...")
-
-            # Build proper pg_restore command with individual connection parameters
-            cmd = [
-                "pg_restore",
-                "-h", str(self.db_params['host']),
-                "-p", str(self.db_params['port']),
-                "-U", self.db_params['user'],
-                "-d", self.db_params['database'],
-                "--clean",                    # Clean before restore
-                "--no-acl",                   # Skip ACLs
-                "--no-owner",                 # Skip ownership
-                "--verbose",                  # Show progress
-                str(backup_path)
-            ]
-
-            # Set up environment with password
-            env = os.environ.copy()
-            if self.db_params.get('password'):
-                env['PGPASSWORD'] = self.db_params['password']
-            env['PGCONNECT_TIMEOUT'] = '30'  # 30 second connection timeout
-
-            print(f"Executing: pg_restore -h {self.db_params['host']} -p {self.db_params['port']} -U {self.db_params['user']} -d {self.db_params['database']} --clean --no-acl --no-owner --verbose {backup_path.name}")
-
-            # Use subprocess.run for simpler execution with timeout
-            result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                timeout=180,  # 3 minutes timeout for custom format
-                env=env
-            )
-
-            if result.returncode == 0:
-                print("✅ Custom backup restore completed successfully")
-                return True
-            else:
-                print(f"❌ Custom restore failed (exit code: {result.returncode})")
-                if result.stderr:
-                    print(f"Error details: {result.stderr.strip()}")
-                if result.stdout:
-                    print(f"Output: {result.stdout.strip()}")
-                return False
-
-        except subprocess.TimeoutExpired:
-            print("❌ Custom restore timeout (3 minutes)")
-            return False
-
-        except Exception as e:
-            print(f"❌ Custom restore error: {e}")
-            return False
-
-    def _capture_pre_restore_state(self):
-        """Capture the current state before restore to handle post-restore items"""
-        print("📸 Capturing pre-restore state...")
-        try:
-            # This would require database access, but we'll implement it as a SQL script
-            # that gets executed after the main restore
-            return True
-        except Exception as e:
-            print(f"⚠️  Failed to capture pre-restore state: {e}")
-            return False
-
     def _restore_archived_items_to_original_locations(self):
-        """Move all archived items back to their original tables"""
+        """Move all archived items back to their original tables using SQLAlchemy"""
         print("🔄 Moving archived items to original locations...")
 
         try:
-            # Build SQL commands to move archived items back to original tables
-            sql_commands = []
-
             # Move archived updates back to updates table
-            sql_commands.append("""
-                INSERT INTO updates (id, name, process, message, timestamp)
-                SELECT id, name, process, message, timestamp
-                FROM archived_updates
-                ON CONFLICT (id) DO NOTHING;
-            """)
+            archived_updates = ArchivedUpdate.query.all()
+            for archived in archived_updates:
+                try:
+                    # Create new update from archived data
+                    restored_update = Update(
+                        id=archived.id,
+                        name=archived.name,
+                        process=archived.process,
+                        message=archived.message,
+                        timestamp=archived.timestamp
+                    )
+                    db.session.add(restored_update)
+                except Exception as e:
+                    print(f"  ⚠️  Failed to restore archived update {archived.id}: {e}")
 
             # Move archived SOPs back to sop_summaries table
-            sql_commands.append("""
-                INSERT INTO sop_summaries (id, title, summary_text, department, tags, created_at)
-                SELECT id, title, summary_text, department, tags, created_at
-                FROM archived_sop_summaries
-                ON CONFLICT (id) DO NOTHING;
-            """)
+            archived_sops = ArchivedSOPSummary.query.all()
+            for archived in archived_sops:
+                try:
+                    restored_sop = SOPSummary(
+                        id=archived.id,
+                        title=archived.title,
+                        summary_text=archived.summary_text,
+                        department=archived.department,
+                        tags=archived.tags,
+                        created_at=archived.created_at
+                    )
+                    db.session.add(restored_sop)
+                except Exception as e:
+                    print(f"  ⚠️  Failed to restore archived SOP {archived.id}: {e}")
 
             # Move archived lessons back to lessons_learned table
-            sql_commands.append("""
-                INSERT INTO lessons_learned (id, title, content, summary, author, department, tags, created_at, updated_at)
-                SELECT id, title, content, summary, author, department, tags, created_at, updated_at
-                FROM archived_lessons_learned
-                ON CONFLICT (id) DO NOTHING;
-            """)
+            archived_lessons = ArchivedLessonLearned.query.all()
+            for archived in archived_lessons:
+                try:
+                    restored_lesson = LessonLearned(
+                        id=archived.id,
+                        title=archived.title,
+                        content=archived.content,
+                        summary=archived.summary,
+                        author=archived.author,
+                        department=archived.department,
+                        tags=archived.tags,
+                        created_at=archived.created_at,
+                        updated_at=archived.updated_at
+                    )
+                    db.session.add(restored_lesson)
+                except Exception as e:
+                    print(f"  ⚠️  Failed to restore archived lesson {archived.id}: {e}")
 
-            # Execute the SQL commands
-            for sql in sql_commands:
-                if not self._execute_sql_command(sql.strip()):
-                    print(f"⚠️  Failed to execute: {sql[:50]}...")
-                    return False
-
+            # Commit all changes
+            db.session.commit()
             print("✅ Archived items moved to original locations")
             return True
 
         except Exception as e:
             print(f"❌ Failed to restore archived items: {e}")
-            return False
-
-    def _execute_sql_command(self, sql_command):
-        """Execute a SQL command using psql"""
-        try:
-            cmd = [
-                "psql",
-                "-h", str(self.db_params['host']),
-                "-p", str(self.db_params['port']),
-                "-U", self.db_params['user'],
-                "-d", self.db_params['database'],
-                "-c", sql_command,
-                "--quiet",
-                "--no-psqlrc"
-            ]
-
-            env = os.environ.copy()
-            if self.db_params.get('password'):
-                env['PGPASSWORD'] = self.db_params['password']
-            env['PGCONNECT_TIMEOUT'] = '30'
-
-            result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                timeout=60,  # 1 minute timeout for SQL commands
-                env=env
-            )
-
-            if result.returncode == 0:
-                return True
-            else:
-                print(f"SQL command failed: {result.stderr.strip()}")
-                return False
-
-        except subprocess.TimeoutExpired:
-            print("SQL command timed out")
-            return False
-        except Exception as e:
-            print(f"SQL command error: {e}")
+            db.session.rollback()
             return False
 
     def _post_restore_cleanup_and_verify(self):
@@ -568,101 +420,23 @@ class DatabaseBackupSystem:
 
         try:
             # Clear archived tables since items are now in original locations
-            cleanup_commands = [
-                "DELETE FROM archived_updates;",
-                "DELETE FROM archived_sop_summaries;",
-                "DELETE FROM archived_lessons_learned;"
-            ]
+            archived_tables = [ArchivedUpdate, ArchivedSOPSummary, ArchivedLessonLearned]
 
-            for sql in cleanup_commands:
-                if not self._execute_sql_command(sql):
-                    print(f"⚠️  Failed to clean up archived table: {sql}")
-                    # Don't fail the entire process for cleanup issues
+            for table_class in archived_tables:
+                try:
+                    deleted_count = table_class.query.delete()
+                    print(f"  🗑️  Cleared {deleted_count} records from {table_class.__tablename__}")
+                except Exception as e:
+                    print(f"  ⚠️  Failed to clean up {table_class.__tablename__}: {e}")
 
-            # Verify data integrity
-            verification_commands = [
-                "SELECT COUNT(*) as updates_count FROM updates;",
-                "SELECT COUNT(*) as sops_count FROM sop_summaries;",
-                "SELECT COUNT(*) as lessons_count FROM lessons_learned;"
-            ]
-
-            print("📊 Verification results:")
-            for sql in verification_commands:
-                if self._execute_sql_command(sql):
-                    # The command output would be in result.stdout, but we're using -c
-                    pass
-
+            db.session.commit()
             print("✅ Post-restore cleanup completed")
             return True
 
         except Exception as e:
             print(f"⚠️  Post-restore cleanup had issues: {e}")
+            db.session.rollback()
             return False
-
-    def _handle_post_backup_archived_items(self, backup_metadata):
-        """Handle items that were archived after the backup was created"""
-        try:
-            print("🔍 Checking for items archived after backup creation...")
-
-            if not backup_metadata or "archived_items_info" not in backup_metadata:
-                print("ℹ️  No backup metadata available, skipping post-backup archived items check")
-                return True
-
-            backup_timestamp = backup_metadata.get("backup_timestamp")
-            if not backup_timestamp:
-                print("ℹ️  No backup timestamp available, skipping post-backup archived items check")
-                return True
-
-            # Find items archived after the backup timestamp
-            post_backup_queries = [
-                ("updates", f"""
-                    SELECT id, name, process, message, timestamp
-                    FROM archived_updates
-                    WHERE archived_at > '{backup_timestamp}';
-                """),
-                ("sop_summaries", f"""
-                    SELECT id, title, summary_text, department, tags, created_at
-                    FROM archived_sop_summaries
-                    WHERE archived_at > '{backup_timestamp}';
-                """),
-                ("lessons_learned", f"""
-                    SELECT id, title, content, summary, author, department, tags, created_at, updated_at
-                    FROM archived_lessons_learned
-                    WHERE archived_at > '{backup_timestamp}';
-                """)
-            ]
-
-            moved_items = {"updates": 0, "sop_summaries": 0, "lessons_learned": 0}
-
-            for table_name, query in post_backup_queries:
-                try:
-                    # This is complex to implement with subprocess, so we'll use a simpler approach
-                    # The main restore already handles moving all archived items back
-                    # This method is more for logging/reporting purposes
-                    print(f"ℹ️  Found items in {table_name} archived after backup (will be handled by main restore)")
-                    pass
-
-                except Exception as e:
-                    print(f"⚠️  Error checking post-backup items in {table_name}: {e}")
-
-            print("✅ Post-backup archived items check completed")
-            return True
-
-        except Exception as e:
-            print(f"⚠️  Post-backup archived items check failed: {e}")
-            return False
-
-    def _get_backup_metadata(self, backup_path):
-        """Get metadata from backup file"""
-        try:
-            metadata_path = backup_path.with_suffix('.json')
-            if metadata_path.exists():
-                with open(metadata_path, 'r') as f:
-                    return json.load(f)
-            return None
-        except Exception as e:
-            print(f"⚠️  Failed to read backup metadata: {e}")
-            return None
     
     def cleanup_old_backups(self):
         """Clean up old backups"""

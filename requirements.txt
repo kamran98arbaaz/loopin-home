@@ -1,29 +1,29 @@
-# Core Flask dependencies
+# Core Flask dependencies (optimized for Railway)
 Flask==2.3.3
 Flask-Login==0.6.3
 Flask-Migrate==4.1.0
 Flask-SocketIO==5.3.6
 Flask-SQLAlchemy==3.1.1
 
-# Database
+# Database (memory-optimized)
 psycopg2-binary==2.9.10
 SQLAlchemy==2.0.42
 alembic==1.16.4
 
-# Web server for production
+# Web server for production (Railway-optimized)
 gunicorn==21.2.0
-eventlet==0.35.2
+gevent==24.2.1  # Lighter than eventlet
 
-# Essential utilities
+# Essential utilities (minimal)
 python-dotenv==1.1.1
 pytz==2025.2
 requests==2.32.4
 
-# Excel export functionality (optional)
-pandas==2.2.3
-openpyxl==3.1.5
+# Excel export functionality (optional - can be removed if not needed)
+pandas==2.1.4  # Downgraded for memory
+openpyxl==3.1.2  # Downgraded for memory
 
-# Socket.IO for real-time features
+# Socket.IO for real-time features (optimized)
 python-socketio==5.11.4
 python-engineio==4.10.1
 
@@ -53,3 +53,4 @@ et-xmlfile==1.1.0
 # Additional utilities
 greenlet==3.1.1
 typing_extensions==4.12.2
+psutil==6.0.0  # Memory monitoring
