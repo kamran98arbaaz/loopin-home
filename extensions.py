@@ -33,4 +33,17 @@ socketio = SocketIO(
     async_mode='threading',  # Force threading mode for Railway
     path='/socket.io',  # Explicit Socket.IO path
     transports=['polling', 'websocket'],  # Explicit transport order
+    # Enhanced stability configurations for Railway
+    close_timeout=60,  # Longer close timeout for stability
+    heartbeat_interval=25,  # Heartbeat interval
+    heartbeat_timeout=60,  # Heartbeat timeout
+    max_connections=1000,  # Reasonable connection limit for Railway
+    compression=True,  # Enable compression for better performance
+    compression_threshold=1024,  # Compress messages over 1KB
+    # Connection stability options
+    client_manager_mode='threading',  # Threading client manager
+    monitor_clients=True,  # Monitor client connections
+    # Railway optimization settings
+    always_connect=False,  # Don't force connections
+    jsonp=False  # Disable JSONP for security
 )

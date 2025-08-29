@@ -1538,7 +1538,12 @@ def create_app(config_name=None):
             activity_data = []
             for row in activity_results:
                 user_name = row.user_name if row.user_name else "System"
-                activity_time = row.timestamp.strftime('%Y-%m-%d %H:%M:%S') if row.timestamp else ""
+                # Convert UTC timestamp to IST for proper display
+                if row.timestamp:
+                    ist_timestamp = to_ist(row.timestamp)
+                    activity_time = ist_timestamp.strftime('%Y-%m-%d %H:%M:%S')
+                else:
+                    activity_time = ""
 
                 activity_data.append({
                     'Activity ID': row.id,

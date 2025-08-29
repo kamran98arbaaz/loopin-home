@@ -22,149 +22,37 @@ function initializeSocketIO() {
             timeout: 20000, // Increased timeout
             forceNew: false, // Don't force new connection
             reconnection: true,
-            reconnectionAttempts: 10, // More reconnection attempts
+            reconnectionAttempts: 15, // More reconnection attempts for Railway
             reconnectionDelay: 1000,
-            maxReconnectionAttempts: 10,
+            maxReconnectionAttempts: 15,
             upgrade: true, // Allow transport upgrade
             rememberUpgrade: true, // Remember transport upgrade
             secure: window.location.protocol === 'https:', // Match protocol
             rejectUnauthorized: false, // For development
-            // Additional options for better compatibility
+            // Railway-specific optimizations
             path: '/socket.io', // Explicit Socket.IO path
             query: {}, // No additional query parameters
-            extraHeaders: {} // No extra headers
+            extraHeaders: {}, // No extra headers
+            // Force polling for Railway compatibility
+            forcePolling: false, // Let it try websocket first
+            // Better error handling
+            randomizationFactor: 0.5,
+            // Railway-specific connection settings
+            pingTimeout: 60000, // Match server ping timeout
+            pingInterval: 25000, // Match server ping interval
+            // Add connection stability options
+            closeOnBeforeunload: false, // Prevent connection drops
+            autoConnect: true, // Auto-connect on page load
+            // Add Railway-specific headers for debugging
+            auth: {
+                timestamp: Date.now(),
+                userAgent: navigator.userAgent.substring(0, 100)
+            }
         });
         console.log('🔧 Socket.IO connection options set');
 
-        // Connection events
-        socket.on('connect', function() {
-            console.log('✅ Connected to real-time updates - Socket ID:', socket.id);
-            console.log('🔗 Connection details:', {
-                connected: socket.connected,
-                disconnected: socket.disconnected,
-                transport: socket.io.engine.transport.name
-            });
-            // Request initial unread count
-            console.log('📊 Requesting initial unread count...');
-            socket.emit('get_unread_count');
-        });
-
-        socket.on('disconnect', function() {
-            console.log('❌ Disconnected from real-time updates');
-        });
-
-        socket.on('connect_error', function(error) {
-            console.error('🚫 Socket.IO connection error:', error);
-            console.error('Error details:', {
-                type: error.type,
-                description: error.description,
-                context: error.context
-            });
-        });
-
-        socket.on('connect_timeout', function() {
-            console.error('⏰ Socket.IO connection timeout');
-        });
-
-        socket.on('reconnect', function(attemptNumber) {
-            console.log('🔄 Socket.IO reconnected after', attemptNumber, 'attempts');
-        });
-
-        socket.on('reconnect_attempt', function(attemptNumber) {
-            console.log('🔄 Socket.IO reconnection attempt', attemptNumber);
-        });
-
-        socket.on('reconnect_error', function(error) {
-            console.error('🚫 Socket.IO reconnection error:', error);
-        });
-
-        socket.on('reconnect_failed', function() {
-            console.error('❌ Socket.IO reconnection failed permanently');
-        });
-        
-        // Handle real-time updates
-        socket.on('new_update', function(data) {
-            console.log('🔔 New update received via Socket.IO:', data);
-            console.log('📦 Update details - ID:', data.id, 'Name:', data.name, 'Process:', data.process);
-
-            addNotification({
-                type: 'new_update',
-                title: 'New Update',
-                message: `New update from ${data.name || 'Unknown'}`,
-                update_id: data.id,
-                timestamp: new Date().toISOString(),
-                unread: true
-            });
-
-            console.log('🔊 Playing notification sound...');
-            playNotificationSound();
-
-            // Enhanced toast with process details and permanent display
-            const processInfo = data.process ? ` in **${data.process}**` : '';
-            const message = `🔔 **NEW UPDATE POSTED!**${processInfo} by ${data.name || 'Unknown'}. Check it out now!`;
-            console.log('🍞 Showing toast notification:', message);
-            showToast(message, 'permanent'); // Permanent notification with close button
-        });
-        
-        // Handle unread count updates
-        socket.on('unread_count', function(data) {
-            updateUnreadCounterEnhanced(data.count);
-        });
-        
-        // Handle notifications
-        socket.on('notification', function(data) {
-            console.log('📬 Notification received via Socket.IO:', data);
-            console.log('📋 Notification type:', data.type, 'Message:', data.message);
-
-            addNotification({
-                ...data,
-                timestamp: data.timestamp || new Date().toISOString(),
-                unread: true
-            });
-
-            console.log('🔊 Playing notification sound for notification...');
-            playNotificationSound();
-
-            // Show enhanced toast for different types
-            if (data.type === 'new_sop') {
-                console.log('📋 Showing SOP notification toast');
-                showToast('📋 ' + data.message, 'permanent');
-            } else if (data.type === 'new_lesson') {
-                console.log('🎓 Showing lesson notification toast');
-                showToast('🎓 ' + data.message, 'permanent');
-            } else {
-                console.log('🔔 Showing generic notification toast');
-                showToast('🔔 ' + data.message, 'permanent');
-            }
-        });
-        
-        // Handle successful operations
-        socket.on('success', function(data) {
-            showToast(`✅ ${data.message}`);
-        });
-        
-        // Handle errors
-        socket.on('error', function(data) {
-            showToast(`❌ ${data.message}`);
-        });
-        
-        // Handle info messages
-        socket.on('info', function(data) {
-            showToast(`ℹ️ ${data.message}`);
-        });
-        
-        // Subscribe to updates
-        console.log('📡 Subscribing to real-time updates...');
-        socket.emit('subscribe_to_updates');
-
-        // Handle subscription confirmation
-        socket.on('subscribed', function(data) {
-            console.log('✅ Successfully subscribed to updates:', data);
-        });
-
-        socket.on('connected', function(data) {
-            console.log('🔗 Socket.IO connection confirmed:', data);
-        });
+        // Attach all event handlers
+        attachSocketEventHandlers();
     } else {
         console.error('❌ Socket.IO library not available! Check if CDN is loading properly.');
     }
@@ -585,13 +473,225 @@ function testSocketConnection() {
     }, 5000);
 }
 
+// Connection error handling
+let connectionErrorToast = null;
+let connectionErrorCount = 0;
+let lastConnectionErrorTime = 0;
+
+function showConnectionErrorToast() {
+    const now = Date.now();
+    // Only show error toast if it's been more than 30 seconds since last error
+    if (now - lastConnectionErrorTime < 30000) {
+        return;
+    }
+
+    lastConnectionErrorTime = now;
+    connectionErrorCount++;
+
+    // Remove existing error toast
+    clearConnectionErrorToast();
+
+    // Only show error toast after 3 failed attempts
+    if (connectionErrorCount >= 3) {
+        connectionErrorToast = showToast(
+            '⚠️ Real-time updates connection lost. Using offline mode.',
+            'permanent'
+        );
+    }
+}
+
+function clearConnectionErrorToast() {
+    if (connectionErrorToast) {
+        closeToast(connectionErrorToast);
+        connectionErrorToast = null;
+    }
+}
+
+// Enhanced transport fallback mechanism
+function forcePollingFallback() {
+    console.log('🔄 Forcing polling transport fallback...');
+
+    if (socket) {
+        socket.disconnect();
+    }
+
+    // Create new connection with polling only
+    const protocol = window.location.protocol;
+    const host = window.location.host;
+    const socketUrl = `${protocol}//${host}`;
+
+    socket = io(socketUrl, {
+        transports: ['polling'], // Force polling only
+        timeout: 20000,
+        forceNew: true,
+        reconnection: true,
+        reconnectionAttempts: 10,
+        reconnectionDelay: 2000,
+        secure: window.location.protocol === 'https:',
+        rejectUnauthorized: false,
+        path: '/socket.io',
+        pingTimeout: 60000,
+        pingInterval: 25000,
+        closeOnBeforeunload: false,
+        autoConnect: true
+    });
+
+    // Re-attach all event handlers
+    attachSocketEventHandlers();
+    console.log('✅ Polling fallback connection created');
+}
+
+function attachSocketEventHandlers() {
+    // Connection events
+    socket.on('connect', function() {
+        console.log('✅ Connected to real-time updates - Socket ID:', socket.id);
+        console.log('🔗 Connection details:', {
+            connected: socket.connected,
+            disconnected: socket.disconnected,
+            transport: socket.io.engine.transport.name
+        });
+        // Request initial unread count
+        console.log('📊 Requesting initial unread count...');
+        socket.emit('get_unread_count');
+
+        // Clear any connection error toasts
+        clearConnectionErrorToast();
+        connectionErrorCount = 0; // Reset error count on successful connection
+    });
+
+    socket.on('disconnect', function() {
+        console.log('❌ Disconnected from real-time updates');
+    });
+
+    socket.on('connect_error', function(error) {
+        console.error('🚫 Socket.IO connection error:', error);
+        console.error('Error details:', {
+            type: error.type,
+            description: error.description,
+            context: error.context
+        });
+
+        // Show connection error toast (but don't spam)
+        showConnectionErrorToast();
+    });
+
+    socket.on('connect_timeout', function() {
+        console.error('⏰ Socket.IO connection timeout');
+    });
+
+    socket.on('reconnect', function(attemptNumber) {
+        console.log('🔄 Socket.IO reconnected after', attemptNumber, 'attempts');
+        clearConnectionErrorToast();
+        connectionErrorCount = 0;
+    });
+
+    socket.on('reconnect_attempt', function(attemptNumber) {
+        console.log('🔄 Socket.IO reconnection attempt', attemptNumber);
+    });
+
+    socket.on('reconnect_error', function(error) {
+        console.error('🚫 Socket.IO reconnection error:', error);
+    });
+
+    socket.on('reconnect_failed', function() {
+        console.error('❌ Socket.IO reconnection failed permanently');
+        // Force polling fallback after all reconnection attempts fail
+        setTimeout(forcePollingFallback, 1000);
+    });
+
+    // Handle real-time updates
+    socket.on('new_update', function(data) {
+        console.log('🔔 New update received via Socket.IO:', data);
+        console.log('📦 Update details - ID:', data.id, 'Name:', data.name, 'Process:', data.process);
+
+        addNotification({
+            type: 'new_update',
+            title: 'New Update',
+            message: `New update from ${data.name || 'Unknown'}`,
+            update_id: data.id,
+            timestamp: new Date().toISOString(),
+            unread: true
+        });
+
+        console.log('🔊 Playing notification sound...');
+        playNotificationSound();
+
+        // Enhanced toast with process details and permanent display
+        const processInfo = data.process ? ` in **${data.process}**` : '';
+        const message = `🔔 **NEW UPDATE POSTED!**${processInfo} by ${data.name || 'Unknown'}. Check it out now!`;
+        console.log('🍞 Showing toast notification:', message);
+        showToast(message, 'permanent'); // Permanent notification with close button
+    });
+
+    // Handle unread count updates
+    socket.on('unread_count', function(data) {
+        updateUnreadCounterEnhanced(data.count);
+    });
+
+    // Handle notifications
+    socket.on('notification', function(data) {
+        console.log('📬 Notification received via Socket.IO:', data);
+        console.log('📋 Notification type:', data.type, 'Message:', data.message);
+
+        addNotification({
+            ...data,
+            timestamp: data.timestamp || new Date().toISOString(),
+            unread: true
+        });
+
+        console.log('🔊 Playing notification sound for notification...');
+        playNotificationSound();
+
+        // Show enhanced toast for different types
+        if (data.type === 'new_sop') {
+            console.log('📋 Showing SOP notification toast');
+            showToast('📋 ' + data.message, 'permanent');
+        } else if (data.type === 'new_lesson') {
+            console.log('🎓 Showing lesson notification toast');
+            showToast('🎓 ' + data.message, 'permanent');
+        } else {
+            console.log('🔔 Showing generic notification toast');
+            showToast('🔔 ' + data.message, 'permanent');
+        }
+    });
+
+    // Handle successful operations
+    socket.on('success', function(data) {
+        showToast(`✅ ${data.message}`);
+    });
+
+    // Handle errors
+    socket.on('error', function(data) {
+        showToast(`❌ ${data.message}`);
+    });
+
+    // Handle info messages
+    socket.on('info', function(data) {
+        showToast(`ℹ️ ${data.message}`);
+    });
+
+    // Subscribe to updates
+    console.log('📡 Subscribing to real-time updates...');
+    socket.emit('subscribe_to_updates');
+
+    // Handle subscription confirmation
+    socket.on('subscribed', function(data) {
+        console.log('✅ Successfully subscribed to updates:', data);
+    });
+
+    socket.on('connected', function(data) {
+        console.log('🔗 Socket.IO connection confirmed:', data);
+    });
+}
+
 // Export functions for global access
 window.notifications = {
     toggle: toggleNotifications,
     markAllAsRead: markAllAsRead,
     add: addNotification,
     getUnreadCount: () => unreadCount,
-    testConnection: testSocketConnection
+    testConnection: testSocketConnection,
+    forcePollingFallback: forcePollingFallback
 };
 
 // Make functions globally available
@@ -599,5 +699,6 @@ window.toggleNotifications = toggleNotifications;
 window.markAllAsRead = markAllAsRead;
 window.toggleNotificationSound = toggleNotificationSound;
 window.testSocketConnection = testSocketConnection;
+window.forcePollingFallback = forcePollingFallback;
 
 
