@@ -78,11 +78,11 @@ class DatabaseBackupSystem:
                 f.write(f"-- Created: {now_utc().isoformat()}\n")
                 f.write(f"-- Type: {backup_type}\n")
                 f.write(f"-- Environment: {'production' if self.is_production else 'development'}\n")
-                f.write(f"-- Version: 4.0 (SQL Format)\n")
+                f.write(f"-- Version: 4.0 (PostgreSQL Format)\n")
                 f.write("-- Railway Compatible: Yes\n\n")
 
-                # Disable foreign key checks for restore
-                f.write("SET FOREIGN_KEY_CHECKS = 0;\n\n")
+                # PostgreSQL doesn't need to disable foreign key checks like MySQL
+                # Foreign key constraints are automatically deferred in transactions
 
                 # Export all tables
                 tables_to_export = [
@@ -111,7 +111,8 @@ class DatabaseBackupSystem:
                             # Generate INSERT statements
                             for record in records:
                                 record_dict = record.to_dict() if hasattr(record, 'to_dict') else self._model_to_dict(record)
-                                columns = ', '.join(f'`{k}`' for k in record_dict.keys())
+                                # Use PostgreSQL-style quoting for identifiers
+                                columns = ', '.join(f'"{k}"' for k in record_dict.keys())
                                 values = ', '.join(self._format_sql_value(v) for v in record_dict.values())
                                 f.write(f"INSERT INTO {table_name} ({columns}) VALUES ({values});\n")
 
@@ -127,8 +128,8 @@ class DatabaseBackupSystem:
                             print(f"    [WARN] Failed to export {table_name}: {e}")
                         continue
 
-                # Re-enable foreign key checks
-                f.write("\nSET FOREIGN_KEY_CHECKS = 1;\n")
+                # PostgreSQL automatically handles foreign key constraints
+                # No need to re-enable anything
 
                 # Add completion comment
                 f.write(f"\n-- Backup completed successfully\n")
@@ -156,7 +157,7 @@ class DatabaseBackupSystem:
                     "timestamp": timestamp,
                     "file_size": file_size,
                     "created_at": now_utc().isoformat(),
-                    "format": "sql_dump",
+                    "format": "postgresql_sql_dump",
                     "database_url": self._mask_database_url(),
                     "total_records": total_records,
                     "railway_compatible": True,
@@ -402,7 +403,14 @@ class DatabaseBackupSystem:
                         print(f"    [WARN] Failed to execute statement {i + 1}: {e}")
                     continue
 
-            db.session.commit()
+            # Ensure all changes are committed
+            try:
+                db.session.commit()
+                print("[OK] Database changes committed successfully")
+            except Exception as commit_error:
+                print(f"[WARN] Commit failed, attempting rollback: {commit_error}")
+                db.session.rollback()
+                return False
 
             # Step 4: Verify restore
             print("[SUCCESS] SQL Restore completed successfully!")
@@ -415,7 +423,13 @@ class DatabaseBackupSystem:
             return True
 
         except Exception as e:
-            db.session.rollback()
+            # Ensure proper rollback on any error
+            try:
+                db.session.rollback()
+                print("[OK] Database rolled back successfully")
+            except Exception as rollback_error:
+                print(f"[ERROR] Rollback failed: {rollback_error}")
+
             print(f"[ERROR] Restore failed: {e}")
             return False
 

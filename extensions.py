@@ -14,35 +14,23 @@ is_production = os.getenv("RAILWAY_ENVIRONMENT") == "production" or os.getenv("F
 is_development = os.getenv("FLASK_ENV") == "development" or not is_production
 
 socketio = SocketIO(
-    cors_allowed_origins=[
-        "https://loopin-home-production.up.railway.app",
-        "https://*.up.railway.app",  # Allow all Railway subdomains
-        # Only allow localhost in development
-        "http://localhost:8000",
-        "http://127.0.0.1:8000",
-        "http://localhost:5000",
-        "http://127.0.0.1:5000",
-    ] if is_production else [
-        "https://loopin-home-production.up.railway.app",
-        "https://*.up.railway.app",
-        "http://localhost:8000",
-        "http://127.0.0.1:8000",
-        "http://localhost:5000",
-        "http://127.0.0.1:5000",
-        "*"  # Allow all in development only
-    ],
+    cors_allowed_origins="*",  # Allow all origins for Socket.IO compatibility
     logger=is_development,  # Only enable logging in development
     engineio_logger=is_development,  # Only enable engineio logging in development
     ping_timeout=60,
     ping_interval=25,
     max_http_buffer_size=1000000,
     allow_upgrades=True,
-    cookie=None,  # Disable cookies for Railway
-    cors_credentials=True,  # Allow credentials
+    cookie=None,  # Disable cookies for Railway compatibility
+    cors_credentials=False,  # Disable credentials to avoid CORS issues
     cors_methods=["GET", "POST", "OPTIONS"],
-    cors_headers=["Content-Type", "Authorization", "X-Requested-With"],
+    cors_headers=["Content-Type", "Authorization", "X-Requested-With", "X-Forwarded-For"],
     # Railway-specific configurations
-    manage_session=True,  # Enable Flask session management for better compatibility
-    message_queue=os.getenv("REDIS_URL") if os.getenv("REDIS_URL") else None,  # Use Redis if available
-    channel='socketio'  # Channel name for message queue
+    manage_session=False,  # Disable Flask session management for Railway
+    message_queue=None,  # Use in-memory queue for single instance
+    channel='socketio',  # Channel name for message queue
+    # Additional Railway-compatible settings
+    async_mode='threading',  # Force threading mode for Railway
+    path='/socket.io',  # Explicit Socket.IO path
+    transports=['polling', 'websocket'],  # Explicit transport order
 )

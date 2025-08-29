@@ -19,16 +19,20 @@ function initializeSocketIO() {
 
         socket = io(socketUrl, {
             transports: ['polling', 'websocket'], // Try polling first, then websocket
-            timeout: 10000,
-            forceNew: true,
+            timeout: 20000, // Increased timeout
+            forceNew: false, // Don't force new connection
             reconnection: true,
-            reconnectionAttempts: 5,
+            reconnectionAttempts: 10, // More reconnection attempts
             reconnectionDelay: 1000,
-            maxReconnectionAttempts: 5,
+            maxReconnectionAttempts: 10,
             upgrade: true, // Allow transport upgrade
             rememberUpgrade: true, // Remember transport upgrade
             secure: window.location.protocol === 'https:', // Match protocol
-            rejectUnauthorized: false // For development
+            rejectUnauthorized: false, // For development
+            // Additional options for better compatibility
+            path: '/socket.io', // Explicit Socket.IO path
+            query: {}, // No additional query parameters
+            extraHeaders: {} // No extra headers
         });
         console.log('🔧 Socket.IO connection options set');
 

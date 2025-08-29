@@ -1765,10 +1765,12 @@ def create_app(config_name=None):
                 flash("❌ Backup file verification failed. Cannot restore.", "error")
                 return redirect(url_for('backup_page'))
 
-            # Perform restore with timeout protection
-            def restore_with_timeout():
+            # Perform restore with Flask application context
+            def restore_with_app_context():
                 try:
-                    return backup_system.restore_backup(backup_path)
+                    # Ensure we're within Flask application context
+                    with app.app_context():
+                        return backup_system.restore_backup(backup_path)
                 except Exception as e:
                     logger.error(f"Restore error in thread: {e}")
                     return False
@@ -1776,7 +1778,7 @@ def create_app(config_name=None):
             # Start restore in background with timeout
             import concurrent.futures
             with concurrent.futures.ThreadPoolExecutor() as executor:
-                future = executor.submit(restore_with_timeout)
+                future = executor.submit(restore_with_app_context)
                 try:
                     # Wait up to 90 seconds for restore to complete (matching backend timeout)
                     result = future.result(timeout=90)
@@ -2048,18 +2050,7 @@ def create_app(config_name=None):
                     response.headers['Pragma'] = 'no-cache'
                     response.headers['Expires'] = '0'
 
-        # Add CORS headers for Socket.IO
-        if request.path.startswith('/socket.io/'):
-            origin = request.headers.get('Origin', '*')
-            response.headers['Access-Control-Allow-Origin'] = origin
-            response.headers['Access-Control-Allow-Credentials'] = 'true'
-            response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
-            response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Requested-With'
-            response.headers['Access-Control-Max-Age'] = '86400'  # 24 hours
-
-            # Handle preflight requests
-            if request.method == 'OPTIONS':
-                response.status_code = 200
+        # Socket.IO CORS is handled by the Socket.IO extension, don't override here
 
         # Add Railway-specific headers (only essential ones in production)
         if os.getenv('RAILWAY_ENVIRONMENT'):
@@ -2115,7 +2106,17 @@ if __name__ == "__main__":
             port=port,
             debug=debug_mode,
             log_output=debug_mode,
-            use_reloader=debug_mode
+            use_reloader=debug_mode,
+            # Additional Socket.IO server options for Railway compatibility
+            keyfile=None,
+            certfile=None,
+            server_options={
+                'ping_timeout': 60,
+                'ping_interval': 25,
+                'max_http_buffer_size': 1000000,
+                'allow_upgrades': True,
+                'transports': ['polling', 'websocket']
+            }
         )
     except Exception as e:
         if os.getenv("FLASK_ENV") == "development":

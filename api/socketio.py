@@ -74,33 +74,6 @@ def handle_connect(auth=None):
             logger.info("👤 Guest connected to Socket.IO")
             print("👤 Guest connected to Socket.IO")
 
-        # Check if user is authenticated via session
-        user_id = session.get('user_id')
-        if user_id:
-            # Get user from database
-            user = User.query.get(user_id)
-            if user:
-                # Join user-specific room for private notifications
-                join_room(f"user_{user.id}")
-                # Join authenticated users room
-                join_room('authenticated_users')
-                emit('connected', {
-                    'user_id': user.id,
-                    'username': user.username,
-                    'message': 'Connected to real-time updates'
-                })
-                logger.info(f"👤 User {user.username} (ID: {user.id}) connected to Socket.IO")
-                print(f"👤 User {user.username} (ID: {user.id}) connected to Socket.IO")
-                return
-
-        # Guest users join general room
-        join_room('guests')
-        emit('connected', {
-            'message': 'Connected as guest'
-        })
-        logger.info("👤 Guest connected to Socket.IO")
-        print("👤 Guest connected to Socket.IO")
-
     except Exception as e:
         # Fallback for any errors
         join_room('guests')
