@@ -1,3 +1,4 @@
+import os
 from flask import Blueprint, current_app, request, session
 from flask_socketio import emit, join_room, leave_room
 import json

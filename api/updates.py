@@ -1,6 +1,7 @@
 """
 Updates API endpoints for LoopIn
 """
+import os
 from flask import Blueprint, jsonify, request
 from models import Update, ReadLog, User
 from extensions import db
@@ -137,7 +138,12 @@ def is_redis_healthy():
         if not redis_url:
             return False
 
-        import redis
+        try:
+            import redis
+        except ImportError:
+            # Redis package not available
+            return False
+
         r = redis.from_url(redis_url)
         r.ping()
         return True

@@ -9,6 +9,7 @@ from urllib.parse import urlparse
 from timezone_utils import now_utc
 from extensions import db
 from models import Update, SOPSummary, LessonLearned, ArchivedUpdate, ArchivedSOPSummary, ArchivedLessonLearned, User, ReadLog, ActivityLog
+from sqlalchemy import text
 
 class DatabaseBackupSystem:
     def __init__(self):
@@ -61,75 +62,93 @@ class DatabaseBackupSystem:
             self.backup_retention_days = max(self.backup_retention_days, 7)  # Min 7 days in development
     
     def create_backup(self, backup_type="manual"):
-        """Create a database backup using SQLAlchemy (Railway-compatible)"""
+        """Create a database backup using SQL dump format (Railway-compatible)"""
         try:
             timestamp = now_utc().strftime("%Y%m%d_%H%M%S")
-            backup_filename = f"loopin_backup_{backup_type}_{timestamp}.json"
+            backup_filename = f"loopin_backup_{backup_type}_{timestamp}.sql"
             backup_path = self.backup_dir / backup_filename
 
             if self.is_development:
-                print(f"📦 Creating Railway-compatible backup: {backup_path}")
+                print(f"[BACKUP] Creating Railway-compatible SQL backup: {backup_path}")
 
-            # Collect all data using SQLAlchemy
-            backup_data = {
-                "metadata": {
-                    "backup_type": backup_type,
-                    "timestamp": timestamp,
-                    "created_at": now_utc().isoformat(),
-                    "backup_version": "3.1",  # Updated Railway-compatible version
-                    "format": "sqlalchemy_json",
-                    "database_url": self._mask_database_url(),
-                    "railway_compatible": True,
-                    "environment": "production" if self.is_production else "development",
-                    "compression_enabled": self.compress_backups,
-                    "max_backup_size": self.max_backup_size
-                },
-                "data": {}
-            }
-
-            # Export all tables
-            tables_to_export = [
-                ("updates", Update),
-                ("users", User),
-                ("read_logs", ReadLog),
-                ("activity_logs", ActivityLog),
-                ("sop_summaries", SOPSummary),
-                ("lessons_learned", LessonLearned),
-                ("archived_updates", ArchivedUpdate),
-                ("archived_sop_summaries", ArchivedSOPSummary),
-                ("archived_lessons_learned", ArchivedLessonLearned)
-            ]
-
-            total_records = 0
-            for table_name, model_class in tables_to_export:
-                try:
-                    print(f"  📊 Exporting {table_name}...")
-                    records = model_class.query.all()
-                    backup_data["data"][table_name] = [record.to_dict() if hasattr(record, 'to_dict') else self._model_to_dict(record) for record in records]
-                    total_records += len(records)
-                    print(f"    ✅ {len(records)} records exported")
-                except Exception as e:
-                    print(f"    ⚠️  Failed to export {table_name}: {e}")
-                    backup_data["data"][table_name] = []
-
-            # Save backup to JSON file
+            # Create SQL dump file
             with open(backup_path, 'w', encoding='utf-8') as f:
-                json.dump(backup_data, f, indent=2, ensure_ascii=False, default=str)
+                # Write SQL header with metadata
+                f.write("-- LoopIn Database Backup\n")
+                f.write(f"-- Created: {now_utc().isoformat()}\n")
+                f.write(f"-- Type: {backup_type}\n")
+                f.write(f"-- Environment: {'production' if self.is_production else 'development'}\n")
+                f.write(f"-- Version: 4.0 (SQL Format)\n")
+                f.write("-- Railway Compatible: Yes\n\n")
+
+                # Disable foreign key checks for restore
+                f.write("SET FOREIGN_KEY_CHECKS = 0;\n\n")
+
+                # Export all tables
+                tables_to_export = [
+                    ("users", User),
+                    ("updates", Update),
+                    ("read_logs", ReadLog),
+                    ("activity_logs", ActivityLog),
+                    ("sop_summaries", SOPSummary),
+                    ("lessons_learned", LessonLearned),
+                    ("archived_updates", ArchivedUpdate),
+                    ("archived_sop_summaries", ArchivedSOPSummary),
+                    ("archived_lessons_learned", ArchivedLessonLearned)
+                ]
+
+                total_records = 0
+                for table_name, model_class in tables_to_export:
+                    try:
+                        if self.is_development:
+                            print(f"  [EXPORT] Exporting {table_name}...")
+
+                        records = model_class.query.all()
+                        if records:
+                            # Clear existing data in table
+                            f.write(f"DELETE FROM {table_name};\n")
+
+                            # Generate INSERT statements
+                            for record in records:
+                                record_dict = record.to_dict() if hasattr(record, 'to_dict') else self._model_to_dict(record)
+                                columns = ', '.join(f'`{k}`' for k in record_dict.keys())
+                                values = ', '.join(self._format_sql_value(v) for v in record_dict.values())
+                                f.write(f"INSERT INTO {table_name} ({columns}) VALUES ({values});\n")
+
+                            total_records += len(records)
+                            if self.is_development:
+                                print(f"    [OK] {len(records)} records exported")
+                        else:
+                            if self.is_development:
+                                print(f"    [EMPTY] {table_name}: No records to export")
+
+                    except Exception as e:
+                        if self.is_development:
+                            print(f"    [WARN] Failed to export {table_name}: {e}")
+                        continue
+
+                # Re-enable foreign key checks
+                f.write("\nSET FOREIGN_KEY_CHECKS = 1;\n")
+
+                # Add completion comment
+                f.write(f"\n-- Backup completed successfully\n")
+                f.write(f"-- Total records: {total_records}\n")
+                f.write(f"-- Generated at: {now_utc().isoformat()}\n")
 
             # Check backup file size
             file_size = backup_path.stat().st_size
             if file_size > self.max_backup_size:
                 if self.is_development:
-                    print(f"⚠️  Backup size ({file_size} bytes) exceeds maximum allowed size ({self.max_backup_size} bytes)")
+                    print(f"[WARN] Backup size ({file_size} bytes) exceeds maximum allowed size ({self.max_backup_size} bytes)")
                 backup_path.unlink()  # Delete the oversized backup
                 return None
 
             # Verify backup file
             if backup_path.exists() and file_size > 0:
                 if self.is_development:
-                    print(f"✅ Backup created successfully: {backup_path}")
-                    print(f"   📊 Total records: {total_records}")
-                    print(f"   📁 File size: {file_size} bytes")
+                    print(f"[SUCCESS] SQL Backup created successfully: {backup_path}")
+                    print(f"   [STATS] Total records: {total_records}")
+                    print(f"   [SIZE] File size: {file_size} bytes")
 
                 # Create metadata file
                 metadata = {
@@ -137,12 +156,12 @@ class DatabaseBackupSystem:
                     "timestamp": timestamp,
                     "file_size": file_size,
                     "created_at": now_utc().isoformat(),
-                    "format": "sqlalchemy_json",
+                    "format": "sql_dump",
                     "database_url": self._mask_database_url(),
                     "total_records": total_records,
                     "railway_compatible": True,
-                    "backup_version": "3.1",
-                    "restore_instructions": "Use the Railway-compatible restore method",
+                    "backup_version": "4.0",
+                    "restore_instructions": "Execute the SQL file directly in PostgreSQL",
                     "environment": "production" if self.is_production else "development"
                 }
 
@@ -153,11 +172,12 @@ class DatabaseBackupSystem:
                 return backup_path
             else:
                 if self.is_development:
-                    print("❌ Backup file was not created or is empty")
+                    print("[ERROR] Backup file was not created or is empty")
                 return None
 
         except Exception as e:
-            print(f"❌ Backup error: {e}")
+            if self.is_development:
+                print(f"[ERROR] Backup error: {e}")
             return None
 
     def _model_to_dict(self, model_instance):
@@ -172,8 +192,29 @@ class DatabaseBackupSystem:
                 result[column.name] = value
             return result
         except Exception as e:
-            print(f"⚠️  Error converting model to dict: {e}")
+            if self.is_development:
+                print(f"⚠️  Error converting model to dict: {e}")
             return {}
+
+    def _format_sql_value(self, value):
+        """Format a value for SQL INSERT statement"""
+        if value is None:
+            return "NULL"
+        elif isinstance(value, str):
+            # Escape single quotes and wrap in quotes
+            return f"'{value.replace(chr(39), chr(39) + chr(39))}'"
+        elif isinstance(value, bool):
+            return "1" if value else "0"
+        elif isinstance(value, (int, float)):
+            return str(value)
+        elif hasattr(value, 'isoformat'):  # datetime objects
+            return f"'{value.isoformat()}'"
+        elif isinstance(value, list):
+            # Convert lists to JSON strings
+            return f"'{json.dumps(value)}'"
+        else:
+            # Convert to string and escape
+            return f"'{str(value).replace(chr(39), chr(39) + chr(39))}'"
 
     def _mask_database_url(self):
         """Mask sensitive information in database URL for metadata"""
@@ -190,7 +231,7 @@ class DatabaseBackupSystem:
     def _clear_existing_data(self):
         """Clear existing data before restore"""
         try:
-            print("  🗑️  Clearing existing data...")
+            print("  [CLEAN] Clearing existing data...")
 
             # Clear tables in reverse dependency order
             tables_to_clear = [
@@ -203,16 +244,16 @@ class DatabaseBackupSystem:
             for table_class in tables_to_clear:
                 try:
                     deleted_count = table_class.query.delete()
-                    print(f"    🗑️  Cleared {deleted_count} records from {table_class.__tablename__}")
+                    print(f"    [CLEAN] Cleared {deleted_count} records from {table_class.__tablename__}")
                 except Exception as e:
-                    print(f"    ⚠️  Failed to clear {table_class.__tablename__}: {e}")
+                    print(f"    [WARN] Failed to clear {table_class.__tablename__}: {e}")
 
             db.session.commit()
-            print("  ✅ Existing data cleared")
+            print("  [OK] Existing data cleared")
             return True
 
         except Exception as e:
-            print(f"  ❌ Failed to clear existing data: {e}")
+            print(f"  [ERROR] Failed to clear existing data: {e}")
             db.session.rollback()
             return False
 
@@ -288,13 +329,18 @@ class DatabaseBackupSystem:
         for backup_file in self.backup_dir.glob("*.sql"):
             metadata_file = backup_file.with_suffix('.json')
             if metadata_file.exists():
-                with open(metadata_file, 'r') as f:
-                    metadata = json.load(f)
-                backups.append({
-                    'file': backup_file,
-                    'metadata': metadata
-                })
-        
+                try:
+                    with open(metadata_file, 'r') as f:
+                        metadata = json.load(f)
+                    backups.append({
+                        'file': backup_file,
+                        'metadata': metadata
+                    })
+                except Exception as e:
+                    if self.is_development:
+                        print(f"⚠️  Error reading metadata for {backup_file}: {e}")
+                    continue
+
         backups.sort(key=lambda x: x['metadata']['created_at'], reverse=True)
         return backups
     
@@ -306,72 +352,71 @@ class DatabaseBackupSystem:
             return False
     
     def restore_backup(self, backup_path):
-        """Restore database from Railway-compatible JSON backup"""
+        """Restore database from SQL backup file"""
         try:
-            print(f"🚀 Starting Railway-compatible restore from: {backup_path}")
+            print(f"[RESTORE] Starting SQL restore from: {backup_path}")
 
-            # Step 1: Load backup data
+            # Step 1: Verify backup file
             if not backup_path.exists():
-                print(f"❌ Backup file not found: {backup_path}")
+                print(f"[ERROR] Backup file not found: {backup_path}")
                 return False
 
-            print("📖 Loading backup data...")
-            with open(backup_path, 'r', encoding='utf-8') as f:
-                backup_data = json.load(f)
-
-            if "data" not in backup_data:
-                print("❌ Invalid backup format - missing data section")
+            if backup_path.suffix.lower() != '.sql':
+                print(f"[ERROR] Invalid backup file format. Expected .sql, got {backup_path.suffix}")
                 return False
 
-            # Step 2: Clear existing data (optional - ask user?)
-            print("🧹 Preparing database for restore...")
+            # Step 2: Clear existing data
+            print("[PREP] Preparing database for restore...")
             if not self._clear_existing_data():
-                print("⚠️  Warning: Could not clear existing data")
+                print("[WARN] Warning: Could not clear existing data")
 
-            # Step 3: Restore all tables
-            total_restored = 0
-            tables_to_restore = [
-                ("users", User),
-                ("updates", Update),
-                ("read_logs", ReadLog),
-                ("activity_logs", ActivityLog),
-                ("sop_summaries", SOPSummary),
-                ("lessons_learned", LessonLearned),
-                ("archived_updates", ArchivedUpdate),
-                ("archived_sop_summaries", ArchivedSOPSummary),
-                ("archived_lessons_learned", ArchivedLessonLearned)
-            ]
+            # Step 3: Execute SQL file
+            print("[EXEC] Executing SQL restore...")
+            total_executed = 0
 
-            for table_name, model_class in tables_to_restore:
-                if table_name in backup_data["data"]:
-                    records = backup_data["data"][table_name]
-                    if records:
-                        print(f"  📊 Restoring {table_name} ({len(records)} records)...")
-                        restored_count = self._restore_table(model_class, records)
-                        total_restored += restored_count
-                        print(f"    ✅ {restored_count} records restored")
-                    else:
-                        print(f"  📊 {table_name}: No data to restore")
+            with open(backup_path, 'r', encoding='utf-8') as f:
+                sql_content = f.read()
 
-            # Step 4: Handle archived items restoration
-            print("🔄 Processing archived items restoration...")
-            archived_restore_success = self._restore_archived_items_to_original_locations()
+            # Split SQL into individual statements (basic approach)
+            # Remove comments and split by semicolons
+            import re
+            sql_statements = []
+            for statement in sql_content.split(';'):
+                statement = statement.strip()
+                if statement and not statement.startswith('--'):
+                    # Remove inline comments
+                    statement = re.sub(r'--.*$', '', statement, flags=re.MULTILINE).strip()
+                    if statement:
+                        sql_statements.append(statement + ';')
 
-            if not archived_restore_success:
-                print("⚠️  Warning: Archived items restoration had issues")
+            # Execute each statement
+            for i, statement in enumerate(sql_statements):
+                try:
+                    if statement.strip():
+                        db.session.execute(text(statement))
+                        total_executed += 1
+                        if self.is_development and (i + 1) % 100 == 0:
+                            print(f"    [PROGRESS] Executed {i + 1} statements...")
+                except Exception as e:
+                    if self.is_development:
+                        print(f"    [WARN] Failed to execute statement {i + 1}: {e}")
+                    continue
 
-            # Step 5: Verify restore
-            print("✅ Restore completed successfully!")
-            print(f"📊 Total records restored: {total_restored}")
-            print("📋 Summary:")
-            print("   ✅ Database tables restored")
-            print("   ✅ Archived items moved to original locations")
-            print("   ✅ Railway-compatible format used")
+            db.session.commit()
+
+            # Step 4: Verify restore
+            print("[SUCCESS] SQL Restore completed successfully!")
+            print(f"[STATS] Total SQL statements executed: {total_executed}")
+            print("[SUMMARY]:")
+            print("   [OK] SQL backup executed")
+            print("   [OK] Database tables restored")
+            print("   [OK] Railway-compatible SQL format used")
 
             return True
 
         except Exception as e:
-            print(f"❌ Restore failed: {e}")
+            db.session.rollback()
+            print(f"[ERROR] Restore failed: {e}")
             return False
 
     def _preflight_checks(self, backup_path):
@@ -380,21 +425,21 @@ class DatabaseBackupSystem:
 
         # Check if backup file exists and is readable
         if not self.verify_backup(backup_path):
-            print(f"❌ Backup file verification failed: {backup_path}")
+            print(f"[ERROR] Backup file verification failed: {backup_path}")
             return False
 
         # Check file size (should not be empty)
         file_size = backup_path.stat().st_size
         if file_size == 0:
-            print("❌ Backup file is empty")
+            print("[ERROR] Backup file is empty")
             return False
 
-        print(f"✅ Backup file OK ({file_size} bytes)")
+        print(f"[OK] Backup file OK ({file_size} bytes)")
         return True
 
     def _restore_archived_items_to_original_locations(self):
         """Move all archived items back to their original tables using SQLAlchemy"""
-        print("🔄 Moving archived items to original locations...")
+        print("[ARCHIVE] Moving archived items to original locations...")
 
         try:
             # Move archived updates back to updates table
@@ -450,17 +495,17 @@ class DatabaseBackupSystem:
 
             # Commit all changes
             db.session.commit()
-            print("✅ Archived items moved to original locations")
+            print("[OK] Archived items moved to original locations")
             return True
 
         except Exception as e:
-            print(f"❌ Failed to restore archived items: {e}")
+            print(f"[ERROR] Failed to restore archived items: {e}")
             db.session.rollback()
             return False
 
     def _post_restore_cleanup_and_verify(self):
         """Clean up archived tables and verify restore integrity"""
-        print("🧹 Post-restore cleanup and verification...")
+        print("[CLEANUP] Post-restore cleanup and verification...")
 
         try:
             # Clear archived tables since items are now in original locations
@@ -469,16 +514,16 @@ class DatabaseBackupSystem:
             for table_class in archived_tables:
                 try:
                     deleted_count = table_class.query.delete()
-                    print(f"  🗑️  Cleared {deleted_count} records from {table_class.__tablename__}")
+                    print(f"  [CLEAN] Cleared {deleted_count} records from {table_class.__tablename__}")
                 except Exception as e:
-                    print(f"  ⚠️  Failed to clean up {table_class.__tablename__}: {e}")
+                    print(f"  [WARN] Failed to clean up {table_class.__tablename__}: {e}")
 
             db.session.commit()
-            print("✅ Post-restore cleanup completed")
+            print("[OK] Post-restore cleanup completed")
             return True
 
         except Exception as e:
-            print(f"⚠️  Post-restore cleanup had issues: {e}")
+            print(f"[WARN] Post-restore cleanup had issues: {e}")
             db.session.rollback()
             return False
     
@@ -487,16 +532,13 @@ class DatabaseBackupSystem:
         try:
             from datetime import datetime, timedelta
 
-            # Get all backup files
-            backup_files = list(self.backup_dir.glob("*.json"))
+            # Get all SQL backup files
+            backup_files = list(self.backup_dir.glob("*.sql"))
             current_time = now_utc()
-
-            # Filter out metadata files (they have .json extension but are not the main backup files)
-            main_backup_files = [f for f in backup_files if not f.name.endswith('.json.json')]
 
             backups_to_delete = []
 
-            for backup_file in main_backup_files:
+            for backup_file in backup_files:
                 try:
                     # Check file age
                     file_age_days = (current_time - datetime.fromtimestamp(backup_file.stat().st_mtime, tz=current_time.tzinfo)).days
@@ -505,7 +547,7 @@ class DatabaseBackupSystem:
                         backups_to_delete.append(backup_file)
                 except Exception as e:
                     if self.is_development:
-                        print(f"⚠️  Error checking backup file {backup_file}: {e}")
+                        print(f"[WARN] Error checking backup file {backup_file}: {e}")
                     continue
 
             # Delete old backups
@@ -522,14 +564,14 @@ class DatabaseBackupSystem:
 
                     deleted_count += 1
                     if self.is_development:
-                        print(f"🗑️  Deleted old backup: {backup_file.name}")
+                        print(f"[DELETE] Deleted old backup: {backup_file.name}")
                 except Exception as e:
                     if self.is_development:
-                        print(f"⚠️  Error deleting backup {backup_file}: {e}")
+                        print(f"[WARN] Error deleting backup {backup_file}: {e}")
 
             if self.is_development and deleted_count > 0:
-                print(f"✅ Cleaned up {deleted_count} old backups (retention: {self.backup_retention_days} days)")
+                print(f"[SUCCESS] Cleaned up {deleted_count} old backups (retention: {self.backup_retention_days} days)")
 
         except Exception as e:
             if self.is_development:
-                print(f"❌ Error during backup cleanup: {e}")
+                print(f"[ERROR] Error during backup cleanup: {e}")

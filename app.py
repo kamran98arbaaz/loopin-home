@@ -466,7 +466,12 @@ def create_app(config_name=None):
             if redis_url:
                 try:
                     # Simple Redis connectivity check
-                    import redis
+                    try:
+                        import redis
+                    except ImportError:
+                        out["redis"] = "redis_package_not_installed"
+                        return jsonify(out), 200
+
                     r = redis.from_url(redis_url)
                     r.ping()
                     out["redis"] = "connected"
